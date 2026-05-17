@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma - Control de Inventario y Laboratorio</title>
-    <!-- Tailwind CSS para diseño visual adaptable -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Biblioteca para Leer Códigos QR con la cámara -->
+    <title>Chuyma - Control de Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <!-- Biblioteca para Generar e Imprimir Códigos QR automáticamente -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
 
-    <!-- PANTALLA 1: CANDADO DE SEGURIDAD (LOGIN) -->
     <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen px-4">
         <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-amber-500/20">
             <h1 class="text-3xl font-bold text-center text-amber-500 mb-2">CHUYMA</h1>
@@ -22,23 +21,21 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Correo Electrónico</label>
-                    <input type="email" id="login-email" class="w-full bg-gray-750 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500">
+                    <input type="email" id="login-email" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Contraseña</label>
-                    <input type="password" id="login-password" class="w-full bg-gray-750 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500">
+                    <input type="password" id="login-password" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500">
                 </div>
                 <button id="btn-login" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition duration-200 mt-2 text-lg cursor-pointer">
                     Abrir Bodega
                 </button>
-                <p id="login-error" class="text-red-400 text-sm text-center hidden"></p>
+                <p id="login-error" class="text-red-400 text-sm text-center mt-2 hidden"></p>
             </div>
         </div>
     </div>
 
-    <!-- PANTALLA 2: PANEL PRINCIPAL (DASHBOARD) -->
     <div id="vista-app" class="hidden min-h-screen flex flex-col">
-        <!-- Barra Superior -->
         <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-bold text-amber-500">Chuyma Bodega</h1>
@@ -49,16 +46,13 @@
             </button>
         </header>
 
-        <!-- Contenido Principal -->
         <main class="flex-1 p-4 max-w-5xl w-full mx-auto space-y-6">
-            
-            <!-- SECCIÓN: BUSCADOR Y ALERTAS -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="md:col-span-2 bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col justify-center">
                     <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Buscador Manual de Insumos</label>
-                    <input type="text" id="buscador" placeholder="Escribe malta, lúpulo, botella, reactivo..." class="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500 text-lg">
+                    <input type="text" id="buscador" placeholder="Escribe malta, lúpulo, botella..." class="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500 text-lg">
                 </div>
-                <div id="panel-alertas" class="bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col justify-center items-center text-center">
+                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col justify-center items-center text-center">
                     <span class="text-xs font-semibold text-gray-400 uppercase mb-1">Estado de Alertas</span>
                     <div id="alerta-status" class="text-green-400 font-bold text-lg flex items-center gap-2">
                         <span class="w-3 h-3 bg-green-400 rounded-full inline-block animate-pulse"></span> Todo en Orden
@@ -66,7 +60,6 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN: BOTONES GIGANTES -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button id="btn-abrir-camara" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-black p-6 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-lg text-xl transition cursor-pointer">
                     <span class="text-3xl">📷</span> ESCANEAR CÓDIGO QR
@@ -76,7 +69,6 @@
                 </button>
             </div>
 
-            <!-- AREA DE LA CÁMARA (OCULTA POR DEFECTO) -->
             <div id="contenedor-camara" class="hidden bg-black p-4 rounded-xl border border-amber-500 max-w-md mx-auto relative">
                 <div id="lector-qr" class="w-full"></div>
                 <button id="btn-cerrar-camara" class="w-full bg-red-600 text-white font-bold p-2 rounded-lg mt-3 transition cursor-pointer">
@@ -84,15 +76,12 @@
                 </button>
             </div>
 
-            <!-- RESULTADOS DE BÚSQUEDA / LISTADO RAPIDO -->
             <div id="lista-insumos" class="grid grid-cols-1 gap-3"></div>
 
-            <!-- MODAL / FORMULARIO: REGISTRO Y DETALLE -->
             <div id="form-insumo" class="hidden bg-gray-800 p-6 rounded-xl border border-gray-700 space-y-4">
                 <h2 id="form-titulo" class="text-2xl font-bold text-amber-500 border-b border-gray-700 pb-2">Detalle del Insumo</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Datos Base -->
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs text-gray-400 uppercase">Categoría de Insumo</label>
@@ -122,7 +111,6 @@
                         </div>
                     </div>
 
-                    <!-- Visualización del QR Automático -->
                     <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex flex-col items-center justify-center text-center relative min-h-[200px]">
                         <span class="text-xs text-gray-400 uppercase mb-2">Código QR de Bodega</span>
                         <div id="qrcode-container" class="bg-white p-2 rounded-lg inline-block"></div>
@@ -132,30 +120,19 @@
                     </div>
                 </div>
 
-                <!-- Campos Dinámicos según Categoría -->
-                <div id="campos-dinamicos" class="border-t border-gray-700 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <!-- Se llenan por JavaScript automáticamente -->
-                </div>
+                <div id="campos-dinamicos" class="border-t border-gray-700 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
 
-                <!-- Botones del Formulario -->
                 <div class="flex gap-3 justify-end border-t border-gray-700 pt-4">
                     <button id="btn-cancelar" class="bg-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-600 transition cursor-pointer">Cancelar</button>
                     <button id="btn-guardar" class="bg-amber-500 text-gray-900 font-bold px-6 py-2 rounded-lg hover:bg-amber-600 transition cursor-pointer">Guardar En Bodega</button>
                 </div>
             </div>
-
         </main>
     </div>
 
-    <!-- CONFIGURACIÓN E INYECCIÓN DE PROGRAMACIÓN -->
-    <script type="module">
-        // Importación modular de las librerías de Firebase de forma directa
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // CONFIGURACIÓN DE FIREBASE DE CHUYMA (Tus llaves de seguridad ya inyectadas)
-        const firebaseConfig = {
+    <script>
+        // Configuración directa y explícita de tu proyecto Chuyma
+        var firebaseConfig = {
             apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
             authDomain: "inventariochuyma-da052.firebaseapp.com",
             projectId: "inventariochuyma-da052",
@@ -164,98 +141,90 @@
             appId: "1:677439195293:web:50b624de9e0c877c89ec74"
         };
 
-        // Encendido de los motores
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Inicialización clásica global sin módulos
+        firebase.initializeApp(firebaseConfig);
+        var auth = firebase.auth();
+        var db = firebase.firestore();
 
-        // Variables Globales de control de hilos
-        let insumosLocales = [];
-        let qrScanner = null;
-        let qrCodeGenerado = null;
-        let idInsumoSeleccionado = null;
+        var insumosLocales = [];
+        var qrScanner = null;
+        var idInsumoSeleccionado = null;
 
-        // Elementos Visuales del HTML
-        const vistaLogin = document.getElementById('vista-login');
-        const vistaApp = document.getElementById('vista-app');
-        const buscador = document.getElementById('buscador');
-        const listaInsumos = document.getElementById('lista-insumos');
-        const formInsumo = document.getElementById('form-insumo');
-        const qrcodeContainer = document.getElementById('qrcode-container');
-        const camposDinamicos = document.getElementById('campos-dinamicos');
+        var vistaLogin = document.getElementById('vista-login');
+        var vistaApp = document.getElementById('vista-app');
+        var errorTxt = document.getElementById('login-error');
+        var buscador = document.getElementById('buscador');
+        var listaInsumos = document.getElementById('lista-insumos');
+        var formInsumo = document.getElementById('form-insumo');
+        var qrcodeContainer = document.getElementById('qrcode-container');
+        var camposDinamicos = document.getElementById('campos-dinamicos');
 
-        // --- SISTEMA DE LOGUEO Y LLAVES ---
-        document.getElementById('btn-login').addEventListener('click', () => {
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-password').value;
-            const errorTxt = document.getElementById('login-error');
+        // Escuchador de clics adaptado a navegadores modernos
+        document.getElementById('btn-login').addEventListener('click', function(e) {
+            e.preventDefault();
+            errorTxt.classList.add('hidden');
+            var email = document.getElementById('login-email').value.trim();
+            var pass = document.getElementById('login-password').value.trim();
             
-            signInWithEmailAndPassword(auth, email, pass)
-                .catch(err => {
-                    errorTxt.textContent = "Llave incorrecta o correo no registrado.";
-                    errorTxt.classList.remove('hidden');
-                });
+            if(!email || !pass) {
+                errorTxt.textContent = "Por favor, llena ambos campos.";
+                errorTxt.classList.remove('hidden');
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, pass).catch(function(err) {
+                console.error(err);
+                errorTxt.textContent = "Acceso denegado. Verifica tus credenciales.";
+                errorTxt.classList.remove('hidden');
+            });
         });
 
-        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+        document.getElementById('btn-logout').addEventListener('click', function() { auth.signOut(); });
 
-        onAuthStateChanged(auth, user => {
+        auth.onAuthStateChanged(function(user) {
             if (user) {
                 vistaLogin.classList.add('hidden');
                 vistaApp.classList.remove('hidden');
-                escucharBodega();
+                db.collection("inventario").onSnapshot(function(snapshot) {
+                    insumosLocales = [];
+                    snapshot.forEach(function(doc) {
+                        insumosLocales.push(Object.assign({ id: doc.id }, doc.data()));
+                    });
+                    evaluarAlertasYListar();
+                });
             } else {
                 vistaLogin.classList.remove('hidden');
                 vistaApp.classList.add('hidden');
             }
         });
 
-        // --- CONEXIÓN AUTOMÁTICA EN TIEMPO REAL CON LA BODEGA ---
-        function escucharBodega() {
-            onSnapshot(collection(db, "inventario"), (snapshot) => {
-                insumosLocales = [];
-                snapshot.forEach(doc => {
-                    insumosLocales.push({ id: doc.id, ...doc.data() });
-                });
-                evaluarAlertasYListar();
-            });
-        }
-
-        // --- MANEJO DE ALERTAS CRÍTICAS ---
         function evaluarAlertasYListar() {
-            let alertaActiva = false;
-            const hoy = new Date();
+            var alertaActiva = false;
+            var hoy = new Date();
 
-            insumosLocales.forEach(insumo => {
-                // Alerta Insumos Secos < 120 unidades
-                if (insumo.categoria === 'empaque' && Number(insumo.stock) < 120) {
-                    alertaActiva = true;
-                }
-                // Alerta Kits y Reactivos Preparados > 1 semana (7 días)
+            insumosLocales.forEach(function(insumo) {
+                if (insumo.categoria === 'empaque' && Number(insumo.stock) < 120) alertaActiva = true;
                 if ((insumo.categoria === 'kit' || insumo.categoria === 'laboratorio') && insumo.fechaPreparacion) {
-                    const fechaPrep = new Date(insumo.fechaPreparacion);
-                    const dias = (hoy - fechaPrep) / (1000 * 60 * 60 * 24);
+                    var dias = (hoy - new Date(insumo.fechaPreparacion)) / (1000 * 60 * 60 * 24);
                     if (dias > 7) alertaActiva = true;
                 }
             });
 
-            const statusDiv = document.getElementById('alerta-status');
+            var statusDiv = document.getElementById('alerta-status');
             if (alertaActiva) {
-                statusDiv.innerHTML = `<span class="w-3 h-3 bg-red-500 rounded-full inline-block animate-ping"></span> ALERTA DE STOCK / TIEMPO`;
+                statusDiv.innerHTML = '<span class="w-3 h-3 bg-red-500 rounded-full inline-block animate-ping"></span> ALERTA ACTIVADA';
                 statusDiv.className = "text-red-500 font-black text-lg flex items-center gap-2";
             } else {
-                statusDiv.innerHTML = `<span class="w-3 h-3 bg-green-400 rounded-full inline-block animate-pulse"></span> Todo en Orden`;
+                statusDiv.innerHTML = '<span class="w-3 h-3 bg-green-400 rounded-full inline-block animate-pulse"></span> Todo en Orden';
                 statusDiv.className = "text-green-400 font-bold text-lg flex items-center gap-2";
             }
-
             renderLista(insumosLocales);
         }
 
-        // --- RENDERIZADO DEL LISTADO Y BUSCADOR ---
         function renderLista(datos) {
             listaInsumos.innerHTML = "";
-            datos.forEach(item => {
-                const div = document.createElement('div');
+            datos.forEach(function(item) {
+                var div = document.createElement('div');
                 div.className = "bg-gray-800 p-4 rounded-xl border border-gray-700 flex justify-between items-center";
                 div.innerHTML = `
                     <div>
@@ -263,41 +232,41 @@
                         <p class="text-xs text-amber-500 uppercase tracking-wide">${item.categoria} | Lote: ${item.lote || 'S/L'}</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button onclick="cambiarStock('${item.id}', -1)" class="bg-gray-700 hover:bg-gray-600 text-white w-10 h-10 rounded-lg font-bold text-xl cursor-pointer">-</button>
+                        <button onclick="cambiarStock('${item.id}', -1)" class="bg-gray-700 text-white w-10 h-10 rounded-lg font-bold text-xl cursor-pointer">-</button>
                         <span class="font-black text-xl px-2 min-w-[40px] text-center">${item.stock}</span>
-                        <button onclick="cambiarStock('${item.id}', 1)" class="bg-gray-700 hover:bg-gray-600 text-white w-10 h-10 rounded-lg font-bold text-xl cursor-pointer">+</button>
-                        <button onclick="verFicha('${item.id}')" class="bg-amber-500 text-gray-900 font-bold px-3 py-2 rounded-lg text-sm ml-2 cursor-pointer">Ver / QR</button>
+                        <button onclick="cambiarStock('${item.id}', 1)" class="bg-gray-700 text-white w-10 h-10 rounded-lg font-bold text-xl cursor-pointer">+</button>
+                        <button onclick="verFicha('${item.id}')" class="bg-amber-500 text-gray-900 font-bold px-3 py-2 rounded-lg text-sm ml-2 cursor-pointer">Ver</button>
                     </div>
                 `;
                 listaInsumos.appendChild(div);
             });
         }
 
-        buscador.addEventListener('input', (e) => {
-            const txt = e.target.value.toLowerCase();
-            const filtrados = insumosLocales.filter(i => i.nombre.toLowerCase().includes(txt) || i.categoria.toLowerCase().includes(txt));
+        buscador.addEventListener('input', function(e) {
+            var txt = e.target.value.toLowerCase();
+            var filtrados = insumosLocales.filter(function(i) {
+                return i.nombre.toLowerCase().includes(txt) || i.categoria.toLowerCase().includes(txt);
+            });
             renderLista(filtrados);
         });
 
-        // --- SUBIR O BAJAR STOCK RÁPIDO ---
-        window.cambiarStock = async function(id, cambio) {
-            const item = insumosLocales.find(i => i.id === id);
+        window.cambiarStock = function(id, cambio) {
+            var item = insumosLocales.find(function(i) { return i.id === id; });
             if(item) {
-                const nuevoStock = Math.max(0, Number(item.stock) + cambio);
-                await updateDoc(doc(db, "inventario", id), { stock: nuevoStock });
+                db.collection("inventario").doc(id).update({ stock: Math.max(0, Number(item.stock) + cambio) });
             }
         };
 
-        // --- FORMULARIO Y CAMPOS DINÁMICOS ---
-        const categoriaSelect = document.getElementById('insumo-categoria');
-        categoriaSelect.addEventListener('change', (e) => pintarCamposDinamicos(e.target.value));
+        var categoriaSelect = document.getElementById('insumo-categoria');
+        categoriaSelect.addEventListener('change', function(e) { pintarCamposDinamicos(e.target.value); });
 
-        function pintarCamposDinamicos(cat, datos = {}) {
+        function pintarCamposDinamicos(cat, datos) {
+            datos = datos || {};
             camposDinamicos.innerHTML = "";
             if (cat === 'malta') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">% Rendimiento (Brewfather)</label><input type="text" id="m-yield" value="${datos.yield || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
-                    <div><label class="text-xs text-gray-400 uppercase">Color EBC/Lovibond</label><input type="text" id="m-color" value="${datos.color || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-xs text-gray-400 uppercase">% Rendimiento</label><input type="text" id="m-yield" value="${datos.yield || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-xs text-gray-400 uppercase">Color EBC</label><input type="text" id="m-color" value="${datos.color || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
                     <div><label class="text-xs text-gray-400 uppercase">% Proteína</label><input type="text" id="m-proteina" value="${datos.proteina || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
                 `;
             } else if (cat === 'lupulo') {
@@ -306,68 +275,59 @@
                 `;
             } else if (cat === 'levadura') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">% Viabilidad Estimada</label><input type="text" id="lev-viab" value="${datos.viabilidad || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-xs text-gray-400 uppercase">% Viabilidad</label><input type="text" id="lev-viab" value="${datos.viabilidad || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
                     <div><label class="text-xs text-gray-400 uppercase">Generación</label><input type="text" id="lev-gen" value="${datos.generacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
                 `;
             } else if (cat === 'kit') {
                 camposDinamicos.innerHTML = `
-                    <div class="sm:col-span-3"><label class="text-xs text-gray-400 uppercase">Desglose Detallado de Receta (Gramajes y Lotes)</label><textarea id="kit-desglose" class="w-full bg-gray-900 border p-2 rounded text-white h-20">${datos.desglose || ''}</textarea></div>
-                    <div><label class="text-xs text-gray-400 uppercase">Fecha de Armado/Molienda</label><input type="date" id="kit-fecha" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div class="sm:col-span-3"><label class="text-xs text-gray-400 uppercase">Desglose Detallado</label><textarea id="kit-desglose" class="w-full bg-gray-900 border p-2 rounded text-white h-20">${datos.desglose || ''}</textarea></div>
+                    <div><label class="text-xs text-gray-400 uppercase">Fecha de Armado</label><input type="date" id="kit-fecha" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
                 `;
             } else if (cat === 'laboratorio') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">Fecha de Apertura/Preparación</label><input type="date" id="lab-fecha" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-xs text-gray-400 uppercase">Fecha Preparación</label><input type="date" id="lab-fecha" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
                 `;
             }
         }
 
-        // --- VER FICHA EXTRAPOLADA Y MOSTRAR QR AUTOMÁTICO ---
         window.verFicha = function(id) {
             idInsumoSeleccionado = id;
-            const item = insumosLocales.find(i => i.id === id);
-            document.getElementById('form-titulo').textContent = "Detalle del Insumo Registrado";
+            var item = insumosLocales.find(function(i) { return i.id === id; });
+            document.getElementById('form-titulo').textContent = "Detalle del Insumo";
             document.getElementById('insumo-categoria').value = item.categoria;
             document.getElementById('insumo-nombre').value = item.nombre;
             document.getElementById('insumo-stock').value = item.stock;
             document.getElementById('insumo-lote').value = item.lote || '';
             
             pintarCamposDinamicos(item.categoria, item);
-            
-            // Generación automática del QR basado en el ID secreto de Firebase
             qrcodeContainer.innerHTML = "";
-            qrCodeGenerado = new QRCode(qrcodeContainer, {
-                text: id,
-                width: 128,
-                height: 128
-            });
-
+            new QRCode(qrcodeContainer, { text: id, width: 128, height: 128 });
             formInsumo.classList.remove('hidden');
             formInsumo.scrollIntoView({ behavior: 'smooth' });
         };
 
-        document.getElementById('btn-nuevo-insumo').addEventListener('click', () => {
+        document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
             idInsumoSeleccionado = null;
             document.getElementById('form-titulo').textContent = "Registrar Nuevo Insumo";
             document.getElementById('insumo-nombre').value = "";
             document.getElementById('insumo-stock').value = "";
             document.getElementById('insumo-lote').value = "";
-            qrcodeContainer.innerHTML = "<p class='text-xs text-gray-500 p-4'>El QR se generará al guardar</p>";
+            qrcodeContainer.innerHTML = "<p class='text-xs text-gray-500 p-4'>Se generará al guardar</p>";
             pintarCamposDinamicos('malta');
             formInsumo.classList.remove('hidden');
         });
 
-        document.getElementById('btn-cancelar').addEventListener('click', () => formInsumo.classList.add('hidden'));
+        document.getElementById('btn-cancelar').addEventListener('click', function() { formInsumo.classList.add('hidden'); });
 
-        document.getElementById('btn-guardar').addEventListener('click', async () => {
-            const cat = document.getElementById('insumo-categoria').value;
-            const payload = {
+        document.getElementById('btn-guardar').addEventListener('click', function() {
+            var cat = document.getElementById('insumo-categoria').value;
+            var payload = {
                 categoria: cat,
                 nombre: document.getElementById('insumo-nombre').value,
                 stock: Number(document.getElementById('insumo-stock').value),
                 lote: document.getElementById('insumo-lote').value,
             };
 
-            // Recolección dinámica
             if(cat === 'malta') {
                 payload.yield = document.getElementById('m-yield').value;
                 payload.color = document.getElementById('m-color').value;
@@ -385,62 +345,39 @@
             }
 
             if (idInsumoSeleccionado) {
-                await updateDoc(doc(db, "inventario", idInsumoSeleccionado), payload);
+                db.collection("inventario").doc(idInsumoSeleccionado).update(payload);
             } else {
-                await addDoc(collection(db, "inventario"), payload);
+                db.collection("inventario").add(payload);
             }
             formInsumo.classList.add('hidden');
         });
 
-        // --- IMPRESIÓN DIRECTA DEL QR ---
-        document.getElementById('btn-imprimir-qr').addEventListener('click', () => {
-            const nombre = document.getElementById('insumo-nombre').value || "Insumo Chuyma";
-            const lote = document.getElementById('insumo-lote').value || "S/L";
-            const qrHtml = qrcodeContainer.innerHTML;
-            
-            const ventanaImpresion = window.open('', '_blank', 'width=400,height=400');
-            ventanaImpresion.document.write(`
-                <html>
-                <body style="text-align:center; font-family:sans-serif; padding:20px;">
-                    <h2 style="margin:0; font-size:18px;">CHUYMA BODEGA</h2>
-                    <p style="margin:2px 0; font-size:14px; font-weight:bold;">${nombre}</p>
-                    <p style="margin:2px 0; font-size:11px;">Lote: ${lote}</p>
-                    <div style="margin:15px auto; display:inline-block;">${qrHtml}</div>
-                    <script>window.onload = function() { window.print(); window.close(); }</script>
-                </body>
-                </html>
-            `);
-            ventanaImpresion.document.close();
+        document.getElementById('btn-imprimir-qr').addEventListener('click', function() {
+            var nombre = document.getElementById('insumo-nombre').value || "Insumo Chuyma";
+            var lote = document.getElementById('insumo-lote').value || "S/L";
+            var qrHtml = qrcodeContainer.innerHTML;
+            var win = window.open('', '_blank', 'width=400,height=400');
+            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Lote: '+lote+'</p><div>'+qrHtml+'</div><script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+            win.document.close();
         });
 
-        // --- LECTOR DE CÁMARA QR (CELULAR/PC) ---
-        const contenedorCamara = document.getElementById('contenedor-camara');
-        document.getElementById('btn-abrir-camara').addEventListener('click', () => {
+        var contenedorCamara = document.getElementById('contenedor-camara');
+        document.getElementById('btn-abrir-camara').addEventListener('click', function() {
             contenedorCamara.classList.remove('hidden');
             qrScanner = new Html5Qrcode("lector-qr");
-            qrScanner.start(
-                { facingMode: "environment" }, // Forzar cámara trasera del celular
-                { fps: 10, qrbox: 250 },
-                (idScaneado) => {
-                    // Acción al leer un QR con éxito
-                    qrScanner.stop().then(() => {
+            qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+                function(idScaneado) {
+                    qrScanner.stop().then(function() {
                         contenedorCamara.classList.add('hidden');
                         verFicha(idScaneado);
                     });
-                },
-                () => {} // Ignorar fallas de enfoque
-            ).catch(() => {
-                alert("No se pudo acceder a la cámara trasera.");
-                contenedorCamara.classList.add('hidden');
-            });
+                }, function() {}
+            ).catch(function() { alert("Camara no disponible."); contenedorCamara.classList.add('hidden'); });
         });
 
-        document.getElementById('btn-cerrar-camara').addEventListener('click', () => {
-            if (qrScanner) {
-                qrScanner.stop().then(() => contenedorCamara.classList.add('hidden'));
-            } else {
-                contenedorCamara.classList.add('hidden');
-            }
+        document.getElementById('btn-cerrar-camara').addEventListener('click', function() {
+            if (qrScanner) qrScanner.stop().then(function() { contenedorCamara.classList.add('hidden'); });
+            else contenedorCamara.classList.add('hidden');
         });
     </script>
 </body>
