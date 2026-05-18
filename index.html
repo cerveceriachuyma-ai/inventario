@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma - Control de Inventario</title>
+    <title>Chuyma Bodega & Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -11,127 +11,137 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased">
 
     <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen px-4">
-        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-amber-500/20">
-            <h1 class="text-3xl font-bold text-center text-amber-500 mb-2">CHUYMA</h1>
-            <p class="text-gray-400 text-center text-sm mb-6">Control de Inventario y Laboratorio</p>
+        <div class="bg-gray-900 border border-amber-500/30 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+            <h1 class="text-4xl font-black text-center text-amber-500 tracking-wider mb-1">CHUYMA</h1>
+            <p class="text-gray-400 text-center text-xs uppercase tracking-widest mb-8">Bodega & Control de Laboratorio</p>
             
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Correo Electrónico</label>
-                    <input type="email" id="login-email" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Correo Electrónico</label>
+                    <input type="email" id="login-email" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3.5 text-white focus:outline-none focus:border-amber-500 transition">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Contraseña</label>
-                    <input type="password" id="login-password" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500">
+                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Contraseña</label>
+                    <input type="password" id="login-password" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3.5 text-white focus:outline-none focus:border-amber-500 transition">
                 </div>
-                <button id="btn-login" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition duration-200 mt-2 text-lg cursor-pointer">
-                    Abrir Bodega
+                <button id="btn-login" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-4 px-4 rounded-xl transition duration-200 mt-2 text-lg uppercase tracking-wide cursor-pointer">
+                    Abrir Sistema
                 </button>
-                <p id="login-error" class="text-red-400 text-sm text-center mt-2 hidden"></p>
+                <p id="login-error" class="text-red-400 text-sm text-center font-semibold mt-2 hidden"></p>
             </div>
         </div>
     </div>
 
     <div id="vista-app" class="hidden min-h-screen flex flex-col">
-        <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center">
-            <div>
-                <h1 class="text-xl font-bold text-amber-500">Chuyma Bodega</h1>
-                <p class="text-xs text-gray-400">Panel de Control Activo</p>
+        <header class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-40">
+            <div class="max-w-6xl w-full mx-auto flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-black text-amber-500 tracking-wide">CHUYMA BODEGA</h1>
+                    <p class="text-xs text-gray-400 font-medium">Panel de Trazabilidad Operativa</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="alerta-status" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-800 text-xs font-bold border border-gray-700"></div>
+                    <button id="btn-logout" class="bg-red-950/40 hover:bg-red-900/40 border border-red-800 text-red-300 font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition">
+                        Salir
+                    </button>
+                </div>
             </div>
-            <button id="btn-logout" class="bg-red-900/40 hover:bg-red-900/65 border border-red-700 text-red-200 px-3 py-1.5 rounded-lg text-sm transition">
-                Salir
-            </button>
         </header>
 
-        <main class="flex-1 p-4 max-w-5xl w-full mx-auto space-y-6">
+        <main class="flex-1 p-4 max-w-6xl w-full mx-auto space-y-6">
+            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="md:col-span-2 bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col justify-center">
-                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Buscador Manual de Insumos</label>
-                    <input type="text" id="buscador" placeholder="Escribe malta, lúpulo, botella..." class="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:outline-none focus:border-amber-500 text-lg">
-                </div>
-                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col justify-center items-center text-center">
-                    <span class="text-xs font-semibold text-gray-400 uppercase mb-1">Estado de Alertas</span>
-                    <div id="alerta-status" class="text-green-400 font-bold text-lg flex items-center gap-2">
-                        <span class="w-3 h-3 bg-green-400 rounded-full inline-block animate-pulse"></span> Todo en Orden
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button id="btn-abrir-camara" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-black p-6 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-lg text-xl transition cursor-pointer">
-                    <span class="text-3xl">📷</span> ESCANEAR CÓDIGO QR
+                <input type="text" id="buscador" placeholder="🔍 Buscar insumo por nombre o lote..." class="md:col-span-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white text-base focus:outline-none focus:border-amber-500 placeholder-gray-500 shadow-inner">
+                <button id="btn-abrir-camara" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
+                    📷 ESCANEAR QR EN PLANTA
                 </button>
-                <button id="btn-nuevo-insumo" class="bg-gray-800 hover:bg-gray-750 text-amber-500 border border-amber-500/30 font-bold p-6 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-lg text-xl transition cursor-pointer">
-                    <span class="text-3xl">📦</span> INGRESAR INSUMO NUEVO
+                <button id="btn-nuevo-insumo" class="bg-gray-900 hover:bg-gray-850 text-amber-500 border border-amber-500/20 font-bold p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
+                    📦 INGRESAR NUEVO ELEMENTO
                 </button>
             </div>
 
-            <div id="contenedor-camara" class="hidden bg-black p-4 rounded-xl border border-amber-500 max-w-md mx-auto relative">
-                <div id="lector-qr" class="w-full"></div>
-                <button id="btn-cerrar-camara" class="w-full bg-red-600 text-white font-bold p-2 rounded-lg mt-3 transition cursor-pointer">
+            <div id="contenedor-camara" class="hidden bg-black p-4 rounded-2xl border border-amber-500 max-w-md mx-auto relative shadow-2xl">
+                <div id="lector-qr" class="w-full overflow-hidden rounded-xl"></div>
+                <button id="btn-cerrar-camara" class="w-full bg-red-600 hover:bg-red-700 text-white font-black p-3 rounded-xl mt-3 text-xs uppercase tracking-wider transition cursor-pointer">
                     Apagar Cámara
                 </button>
             </div>
 
-            <div id="lista-insumos" class="grid grid-cols-1 gap-3"></div>
+            <div class="flex gap-1 overflow-x-auto pb-2 border-b border-gray-800 no-scrollbar">
+                <button onclick="filtrarPorPestana('todas')" id="tab-todas" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-amber-500 text-gray-950 shadow">Todas</button>
+                <button onclick="filtrarPorPestana('malta')" id="tab-malta" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200">Maltas</button>
+                <button onclick="filtrarPorPestana('lupulo')" id="tab-lupulo" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200">Lúpulos</button>
+                <button onclick="filtrarPorPestana('clarificante')" id="tab-clarificante" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200">Clarificantes</button>
+                <button onclick="filtrarPorPestana('laboratorio')" id="tab-laboratorio" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200">Laboratorio</button>
+                <button onclick="filtrarPorPestana('levadura')" id="tab-levadura" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200">Levaduras</button>
+                <button onclick="filtrarPorPestana('limpieza')" id="tab-limpieza" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200">Limpieza</button>
+            </div>
 
-            <div id="form-insumo" class="hidden bg-gray-800 p-6 rounded-xl border border-gray-700 space-y-4">
-                <h2 id="form-titulo" class="text-2xl font-bold text-amber-500 border-b border-gray-700 pb-2">Detalle del Insumo</h2>
+            <div id="lista-insumos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+            <div id="form-insumo" class="hidden bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-6 shadow-2xl relative max-w-4xl mx-auto">
+                <h2 id="form-titulo" class="text-2xl font-black text-amber-500 border-b border-gray-800 pb-3 uppercase tracking-wide">Ficha Técnica</h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-xs text-gray-400 uppercase">Categoría de Insumo</label>
-                            <select id="insumo-categoria" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 mt-1 text-white">
-                                <option value="malta">Maltas (Campos Brewfather)</option>
-                                <option value="lupulo">Lúpulos (Elaboración)</option>
-                                <option value="levadura">Microbiología y Levaduras</option>
-                                <option value="kit">Kits / Recetas Preparadas</option>
-                                <option value="limpieza">Insumos de Limpieza</option>
-                                <option value="laboratorio">Reactivos de Laboratorio</option>
-                                <option value="empaque">Insumos Secos / Envases</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-400 uppercase">Nombre del Insumo / Kit</label>
-                            <input type="text" id="insumo-nombre" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 mt-1 text-white">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs text-gray-400 uppercase">Cantidad / Stock</label>
-                                <input type="number" id="insumo-stock" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 mt-1 text-white">
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Categoría General</label>
+                                <select id="insumo-categoria" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-semibold focus:outline-none focus:border-amber-500">
+                                    <option value="malta">Maltas (Campos Brewfather)</option>
+                                    <option value="lupulo">Lúpulos (Campos Brewfather)</option>
+                                    <option value="clarificante">Clarificantes (Campos Brewfather)</option>
+                                    <option value="laboratorio">Laboratorio (Reactivos, Soluciones, Estándares)</option>
+                                    <option value="levadura">Microbiología (Levaduras Brewfather)</option>
+                                    <option value="limpieza">Limpieza e Higiene Comercial</option>
+                                </select>
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-400 uppercase">Lote Trazabilidad</label>
-                                <input type="text" id="insumo-lote" class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 mt-1 text-white">
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Nombre / Identificación</label>
+                                <input type="text" id="insumo-nombre" placeholder="Ej: Malta Pale Ale / US-05" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
                             </div>
                         </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Stock Actual</label>
+                                <input type="number" step="any" id="insumo-stock" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Stock Mínimo</label>
+                                <input type="number" step="any" id="insumo-minimo" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote Trazabilidad</label>
+                                <input type="text" id="insumo-lote" placeholder="S/L" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <div id="campos-dinamicos" class="bg-gray-950 p-4 rounded-xl border border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[60px] flex items-center"></div>
                     </div>
 
-                    <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 flex flex-col items-center justify-center text-center relative min-h-[200px]">
-                        <span class="text-xs text-gray-400 uppercase mb-2">Código QR de Bodega</span>
-                        <div id="qrcode-container" class="bg-white p-2 rounded-lg inline-block"></div>
-                        <button id="btn-imprimir-qr" class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold text-xs px-3 py-1.5 rounded-lg mt-3 transition flex items-center gap-1 cursor-pointer">
-                            🖨️ Imprimir Etiqueta QR
+                    <div class="bg-gray-950 p-4 rounded-2xl border border-gray-800 flex flex-col items-center justify-center text-center min-h-[220px]">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Trazabilidad QR Física</span>
+                        <div id="qrcode-container" class="bg-white p-3 rounded-xl inline-block shadow-lg"></div>
+                        <button id="btn-imprimir-qr" class="w-full bg-gray-800 hover:bg-gray-750 text-amber-500 font-bold text-xs py-2.5 rounded-xl mt-4 border border-amber-500/10 transition flex items-center justify-center gap-1.5 cursor-pointer">
+                            🖨️ IMPRIMIR ETIQUETA QR
                         </button>
                     </div>
                 </div>
 
-                <div id="campos-dinamicos" class="border-t border-gray-700 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
-
-                <div class="flex gap-3 justify-end border-t border-gray-700 pt-4">
-                    <button id="btn-cancelar" class="bg-gray-700 text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-600 transition cursor-pointer">Cancelar</button>
-                    <button id="btn-guardar" class="bg-amber-500 text-gray-900 font-bold px-6 py-2 rounded-lg hover:bg-amber-600 transition cursor-pointer">Guardar En Bodega</button>
+                <div class="flex gap-3 justify-end border-t border-gray-800 pt-4">
+                    <button id="btn-cancelar" class="bg-gray-800 text-gray-400 font-bold px-5 py-3 rounded-xl hover:bg-gray-750 transition cursor-pointer">Cancelar</button>
+                    <button id="btn-guardar" class="bg-amber-500 text-gray-950 font-black px-8 py-3 rounded-xl hover:bg-amber-600 transition uppercase tracking-wider text-sm cursor-pointer">Guardar Ficha</button>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        // Configuración directa y explícita de tu proyecto Chuyma
+        // Configuración de Conexión de Chuyma
         var firebaseConfig = {
             apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
             authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -141,7 +151,7 @@
             appId: "1:677439195293:web:50b624de9e0c877c89ec74"
         };
 
-        // Inicialización clásica global sin módulos
+        // Inicialización Clásica
         firebase.initializeApp(firebaseConfig);
         var auth = firebase.auth();
         var db = firebase.firestore();
@@ -149,6 +159,7 @@
         var insumosLocales = [];
         var qrScanner = null;
         var idInsumoSeleccionado = null;
+        var pestanaActual = "todas";
 
         var vistaLogin = document.getElementById('vista-login');
         var vistaApp = document.getElementById('vista-app');
@@ -159,7 +170,7 @@
         var qrcodeContainer = document.getElementById('qrcode-container');
         var camposDinamicos = document.getElementById('campos-dinamicos');
 
-        // Escuchador de clics adaptado a navegadores modernos
+        // Login Directo y Seguro
         document.getElementById('btn-login').addEventListener('click', function(e) {
             e.preventDefault();
             errorTxt.classList.add('hidden');
@@ -167,14 +178,12 @@
             var pass = document.getElementById('login-password').value.trim();
             
             if(!email || !pass) {
-                errorTxt.textContent = "Por favor, llena ambos campos.";
+                errorTxt.textContent = "Ingresa tus credenciales de planta.";
                 errorTxt.classList.remove('hidden');
                 return;
             }
-
             auth.signInWithEmailAndPassword(email, pass).catch(function(err) {
-                console.error(err);
-                errorTxt.textContent = "Acceso denegado. Verifica tus credenciales.";
+                errorTxt.textContent = "Clave o usuario incorrecto.";
                 errorTxt.classList.remove('hidden');
             });
         });
@@ -190,7 +199,7 @@
                     snapshot.forEach(function(doc) {
                         insumosLocales.push(Object.assign({ id: doc.id }, doc.data()));
                     });
-                    evaluarAlertasYListar();
+                    evaluarAlertasYRender();
                 });
             } else {
                 vistaLogin.classList.remove('hidden');
@@ -198,62 +207,91 @@
             }
         });
 
-        function evaluarAlertasYListar() {
-            var alertaActiva = false;
-            var hoy = new Date();
+        window.filtrarPorPestana = function(categoria) {
+            pestanaActual = categoria;
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.className = "tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-gray-900 text-gray-400 hover:text-gray-200";
+            });
+            document.getElementById('tab-' + categoria).className = "tab-btn px-4 py-2.5 rounded-xl font-bold text-sm tracking-wide transition whitespace-nowrap bg-amber-500 text-gray-950 shadow";
+            ejecutarFiltro();
+        };
 
-            insumosLocales.forEach(function(insumo) {
-                if (insumo.categoria === 'empaque' && Number(insumo.stock) < 120) alertaActiva = true;
-                if ((insumo.categoria === 'kit' || insumo.categoria === 'laboratorio') && insumo.fechaPreparacion) {
-                    var dias = (hoy - new Date(insumo.fechaPreparacion)) / (1000 * 60 * 60 * 24);
-                    if (dias > 7) alertaActiva = true;
+        function ejecutarFiltro() {
+            var txt = buscador.value.toLowerCase();
+            var filtrados = insumosLocales.filter(function(i) {
+                var matchesTab = (pestanaActual === 'todas' || i.categoria === pestanaActual);
+                var matchesTxt = i.nombre.toLowerCase().includes(txt) || (i.lote && i.lote.toLowerCase().includes(txt));
+                return matchesTab && matchesTxt;
+            });
+            renderLista(filtrados);
+        }
+
+        buscador.addEventListener('input', ejecutarFiltro);
+
+        function evaluarAlertasYRender() {
+            var quiebreActivo = false;
+            insumosLocales.forEach(function(item) {
+                if (item.minimo && Number(item.stock) <= Number(item.minimo)) {
+                    quiebreActivo = true;
                 }
             });
 
             var statusDiv = document.getElementById('alerta-status');
-            if (alertaActiva) {
-                statusDiv.innerHTML = '<span class="w-3 h-3 bg-red-500 rounded-full inline-block animate-ping"></span> ALERTA ACTIVADA';
-                statusDiv.className = "text-red-500 font-black text-lg flex items-center gap-2";
+            if (quiebreActivo) {
+                statusDiv.innerHTML = '<span class="w-2.5 h-2.5 bg-red-500 rounded-full inline-block animate-ping"></span> STOCK CRÍTICO EN PLANTA';
+                statusDiv.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-950/30 text-red-400 text-xs font-black border border-red-900/50";
             } else {
-                statusDiv.innerHTML = '<span class="w-3 h-3 bg-green-400 rounded-full inline-block animate-pulse"></span> Todo en Orden';
-                statusDiv.className = "text-green-400 font-bold text-lg flex items-center gap-2";
+                statusDiv.innerHTML = '<span class="w-2.5 h-2.5 bg-green-400 rounded-full inline-block"></span> OPERACIÓN SEGURA';
+                statusDiv.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900 text-green-400 text-xs font-bold border border-gray-800";
             }
-            renderLista(insumosLocales);
+            ejecutarFiltro();
         }
 
         function renderLista(datos) {
             listaInsumos.innerHTML = "";
+            if (datos.length === 0) {
+                listaInsumos.innerHTML = `<div class="col-span-full text-center py-12 text-gray-600 font-medium text-sm">No hay insumos registrados en esta sección.</div>`;
+                return;
+            }
+
             datos.forEach(function(item) {
-                var div = document.createElement('div');
-                div.className = "bg-gray-800 p-4 rounded-xl border border-gray-700 flex justify-between items-center";
-                div.innerHTML = `
+                var esCritico = item.minimo && Number(item.stock) <= Number(item.minimo);
+                var unidad = "unidades";
+                if (item.categoria === 'malta') unidad = "kg";
+                if (item.categoria === 'lupulo' || item.categoria === 'clarificante') unidad = "g";
+
+                var card = document.createElement('div');
+                card.className = `bg-gray-900 p-5 rounded-2xl border transition shadow-lg flex flex-col justify-between h-48 ${esCritico ? 'border-red-600/60 shadow-red-950/10' : 'border-gray-850 hover:border-gray-800'}`;
+                
+                card.innerHTML = `
                     <div>
-                        <h3 class="font-bold text-white text-lg">${item.nombre}</h3>
-                        <p class="text-xs text-amber-500 uppercase tracking-wide">${item.categoria} | Lote: ${item.lote || 'S/L'}</p>
+                        <div class="flex justify-between items-start gap-2">
+                            <h3 class="font-black text-white text-lg truncate w-full tracking-wide">${item.nombre}</h3>
+                            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-gray-850 text-amber-500 tracking-wider">${item.categoria}</span>
+                        </div>
+                        <p class="text-xs font-bold text-gray-500 mt-1">Lote: <span class="text-gray-300">${item.lote || 'S/L'}</span></p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <button onclick="cambiarStock('${item.id}', -1)" class="bg-gray-700 text-white w-10 h-10 rounded-lg font-bold text-xl cursor-pointer">-</button>
-                        <span class="font-black text-xl px-2 min-w-[40px] text-center">${item.stock}</span>
-                        <button onclick="cambiarStock('${item.id}', 1)" class="bg-gray-700 text-white w-10 h-10 rounded-lg font-bold text-xl cursor-pointer">+</button>
-                        <button onclick="verFicha('${item.id}')" class="bg-amber-500 text-gray-900 font-bold px-3 py-2 rounded-lg text-sm ml-2 cursor-pointer">Ver</button>
+                    <div class="flex items-center justify-between border-t border-gray-850 pt-3">
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="cambiarStock('${item.id}', -1)" class="bg-gray-800 hover:bg-gray-750 text-white w-11 h-11 rounded-xl font-black text-xl flex items-center justify-center transition cursor-pointer">-</button>
+                            <div class="text-center min-w-[60px] px-1">
+                                <span class="font-black text-xl block text-white">${item.stock}</span>
+                                <span class="text-[9px] text-gray-500 uppercase font-bold block -mt-1">${unidad}</span>
+                            </div>
+                            <button onclick="cambiarStock('${item.id}', 1)" class="bg-gray-800 hover:bg-gray-750 text-white w-11 h-11 rounded-xl font-black text-xl flex items-center justify-center transition cursor-pointer">+</button>
+                        </div>
+                        <button onclick="verFicha('${item.id}')" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition cursor-pointer">Ver</button>
                     </div>
                 `;
-                listaInsumos.appendChild(div);
+                listaInsumos.appendChild(card);
             });
         }
-
-        buscador.addEventListener('input', function(e) {
-            var txt = e.target.value.toLowerCase();
-            var filtrados = insumosLocales.filter(function(i) {
-                return i.nombre.toLowerCase().includes(txt) || i.categoria.toLowerCase().includes(txt);
-            });
-            renderLista(filtrados);
-        });
 
         window.cambiarStock = function(id, cambio) {
             var item = insumosLocales.find(function(i) { return i.id === id; });
             if(item) {
-                db.collection("inventario").doc(id).update({ stock: Math.max(0, Number(item.stock) + cambio) });
+                var nuevoStock = Math.max(0, Number(item.stock) + cambio);
+                db.collection("inventario").doc(id).update({ stock: nuevoStock });
             }
         };
 
@@ -263,30 +301,72 @@
         function pintarCamposDinamicos(cat, datos) {
             datos = datos || {};
             camposDinamicos.innerHTML = "";
+            
             if (cat === 'malta') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">% Rendimiento</label><input type="text" id="m-yield" value="${datos.yield || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
-                    <div><label class="text-xs text-gray-400 uppercase">Color EBC</label><input type="text" id="m-color" value="${datos.color || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
-                    <div><label class="text-xs text-gray-400 uppercase">% Proteína</label><input type="text" id="m-proteina" value="${datos.proteina || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Origen / Proveedor</label><input type="text" id="m-origen" value="${datos.origen || ''}" placeholder="Ej: Weyermann" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Color (EBC / Lovibond)</label><input type="text" id="m-color" value="${datos.color || ''}" placeholder="Ej: 8" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
                 `;
             } else if (cat === 'lupulo') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">% Alfa-Ácidos</label><input type="text" id="l-alfa" value="${datos.alfa || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Formato Presentación</label>
+                        <select id="l-formato" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white font-semibold">
+                            <option value="Pellets (T90)" ${datos.formato === 'Pellets (T90)' ? 'selected' : ''}>Pellets (T90)</option>
+                            <option value="Plug" ${datos.formato === 'Plug' ? 'selected' : ''}>Plug</option>
+                            <option value="Flor" ${datos.formato === 'Flor' ? 'selected' : ''}>Flor (Whole)</option>
+                            <option value="Cryo" ${datos.formato === 'Cryo' ? 'selected' : ''}>Extracto / Cryo</option>
+                        </select></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Alfa-Ácidos (% AA)</label><input type="text" id="l-alfa" value="${datos.alfa || ''}" placeholder="Ej: 13.5" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Año de Cosecha (Crop)</label><input type="text" id="l-cosecha" value="${datos.cosecha || ''}" placeholder="Ej: 2025" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
                 `;
-            } else if (cat === 'levadura') {
+            } else if (cat === 'clarificante') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">% Viabilidad</label><input type="text" id="lev-viab" value="${datos.viabilidad || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
-                    <div><label class="text-xs text-gray-400 uppercase">Generación</label><input type="text" id="lev-gen" value="${datos.generacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
-                `;
-            } else if (cat === 'kit') {
-                camposDinamicos.innerHTML = `
-                    <div class="sm:col-span-3"><label class="text-xs text-gray-400 uppercase">Desglose Detallado</label><textarea id="kit-desglose" class="w-full bg-gray-900 border p-2 rounded text-white h-20">${datos.desglose || ''}</textarea></div>
-                    <div><label class="text-xs text-gray-400 uppercase">Fecha de Armado</label><input type="date" id="kit-fecha" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Uso</label>
+                        <select id="c-uso" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white font-semibold">
+                            <option value="Hervido" ${datos.uso === 'Hervido' ? 'selected' : ''}>Hervido (Hot Side)</option>
+                            <option value="Maduración" ${datos.uso === 'Maduración' ? 'selected' : ''}>Maduración (Cold Side)</option>
+                        </select></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Formato</label>
+                        <select id="c-formato" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white font-semibold">
+                            <option value="Tabletas" ${datos.formato === 'Tabletas' ? 'selected' : ''}>Tabletas</option>
+                            <option value="Polvo" ${datos.formato === 'Polvo' ? 'selected' : ''}>Polvo</option>
+                            <option value="Líquido" ${datos.formato === 'Líquido' ? 'selected' : ''}>Líquido</option>
+                        </select></div>
                 `;
             } else if (cat === 'laboratorio') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-xs text-gray-400 uppercase">Fecha Preparación</label><input type="date" id="lab-fecha" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-900 border p-2 rounded text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Subcategoría</label>
+                        <select id="lab-sub" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white font-semibold">
+                            <option value="Reactivo Puro" ${datos.sub === 'Reactivo Puro' ? 'selected' : ''}>Reactivo Puro</option>
+                            <option value="Solución Preparada" ${datos.sub === 'Solución Preparada' ? 'selected' : ''}>Solución Preparada</option>
+                            <option value="Estándar" ${datos.sub === 'Estándar' ? 'selected' : ''}>Estándar de Calibración</option>
+                        </select></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Concentración / Pureza</label><input type="text" id="lab-concen" value="${datos.concentracion || ''}" placeholder="Ej: 0.1 M / 85%" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
+                    <div class="sm:col-span-2"><label class="text-[10px] font-bold text-gray-400 uppercase">Fecha Expiración / Preparación</label><input type="date" id="lab-fecha" value="${datos.fecha || ''}" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
                 `;
+            } else if (cat === 'levadura') {
+                camposDinamicos.innerHTML = `
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Laboratorio / Proveedor</label><input type="text" id="lev-lab" value="${datos.laboratorio || ''}" placeholder="Ej: Fermentis" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Formato Cepa</label>
+                        <select id="lev-formato" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white font-semibold">
+                            <option value="Seca" ${datos.formato === 'Seca' ? 'selected' : ''}>Seca (Dry)</option>
+                            <option value="Líquida" ${datos.formato === 'Líquida' ? 'selected' : ''}>Líquida (Liquid)</option>
+                            <option value="Barro" ${datos.formato === 'Barro' ? 'selected' : ''}>Barro Reutilizado (Slurry)</option>
+                        </select></div>
+                    <div class="sm:col-span-2"><label class="text-[10px] font-bold text-gray-400 uppercase">Fecha Manufactura / Generación</label><input type="date" id="lev-fecha" value="${datos.fecha || ''}" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
+                `;
+            } else if (cat === 'limpieza') {
+                camposDinamicos.innerHTML = `
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Insumo</label>
+                        <select id="lim-tipo" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white font-semibold">
+                            <option value="Material Desechable" ${datos.tipo === 'Material Desechable' ? 'selected' : ''}>Material Desechable</option>
+                            <option value="Químico" ${datos.tipo === 'Químico' ? 'selected' : ''}>Químico de Limpieza</option>
+                            <option value="Agua Tratada" ${datos.tipo === 'Agua Tratada' ? 'selected' : ''}>Agua Tratada</option>
+                        </select></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Formato / Presentación</label><input type="text" id="lim-formato" value="${datos.formato || ''}" placeholder="Ej: Bidón 5L / Pack 4u" class="w-full bg-gray-900 border border-gray-800 p-2.5 rounded-xl text-xs text-white"></div>
+                `;
+            } else {
+                camposDinamicos.innerHTML = `<p class="text-xs text-gray-600 text-center col-span-full">Esta categoría no requiere parámetros adicionales.</p>`;
             }
         }
 
@@ -297,24 +377,27 @@
             document.getElementById('insumo-categoria').value = item.categoria;
             document.getElementById('insumo-nombre').value = item.nombre;
             document.getElementById('insumo-stock').value = item.stock;
+            document.getElementById('insumo-minimo').value = item.minimo || "";
             document.getElementById('insumo-lote').value = item.lote || '';
             
             pintarCamposDinamicos(item.categoria, item);
             qrcodeContainer.innerHTML = "";
-            new QRCode(qrcodeContainer, { text: id, width: 128, height: 128 });
+            new QRCode(qrcodeContainer, { text: id, width: 120, height: 120 });
             formInsumo.classList.remove('hidden');
             formInsumo.scrollIntoView({ behavior: 'smooth' });
         };
 
         document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
             idInsumoSeleccionado = null;
-            document.getElementById('form-titulo').textContent = "Registrar Nuevo Insumo";
+            document.getElementById('form-titulo').textContent = "Registrar Nuevo Elemento";
             document.getElementById('insumo-nombre').value = "";
             document.getElementById('insumo-stock').value = "";
+            document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
-            qrcodeContainer.innerHTML = "<p class='text-xs text-gray-500 p-4'>Se generará al guardar</p>";
+            qrcodeContainer.innerHTML = "<p class='text-[10px] text-gray-600 p-4 font-bold uppercase tracking-wider'>Se creará al guardar</p>";
             pintarCamposDinamicos('malta');
             formInsumo.classList.remove('hidden');
+            formInsumo.scrollIntoView({ behavior: 'smooth' });
         });
 
         document.getElementById('btn-cancelar').addEventListener('click', function() { formInsumo.classList.add('hidden'); });
@@ -323,62 +406,29 @@
             var cat = document.getElementById('insumo-categoria').value;
             var payload = {
                 categoria: cat,
-                nombre: document.getElementById('insumo-nombre').value,
+                nombre: document.getElementById('insumo-nombre').value.trim(),
                 stock: Number(document.getElementById('insumo-stock').value),
-                lote: document.getElementById('insumo-lote').value,
+                minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
+                lote: document.getElementById('insumo-lote').value.trim(),
             };
 
+            if (!payload.nombre) { alert("El nombre es obligatorio."); return; }
+
             if(cat === 'malta') {
-                payload.yield = document.getElementById('m-yield').value;
+                payload.origen = document.getElementById('m-origen').value;
                 payload.color = document.getElementById('m-color').value;
-                payload.proteina = document.getElementById('m-proteina').value;
             } else if(cat === 'lupulo') {
+                payload.formato = document.getElementById('l-formato').value;
                 payload.alfa = document.getElementById('l-alfa').value;
-            } else if(cat === 'levadura') {
-                payload.viabilidad = document.getElementById('lev-viab').value;
-                payload.generacion = document.getElementById('lev-gen').value;
-            } else if(cat === 'kit') {
-                payload.desglose = document.getElementById('kit-desglose').value;
-                payload.fechaPreparacion = document.getElementById('kit-fecha').value;
+                payload.cosecha = document.getElementById('l-cosecha').value;
+            } else if(cat === 'clarificante') {
+                payload.uso = document.getElementById('c-uso').value;
+                payload.formato = document.getElementById('c-formato').value;
             } else if(cat === 'laboratorio') {
-                payload.fechaPreparacion = document.getElementById('lab-fecha').value;
-            }
-
-            if (idInsumoSeleccionado) {
-                db.collection("inventario").doc(idInsumoSeleccionado).update(payload);
-            } else {
-                db.collection("inventario").add(payload);
-            }
-            formInsumo.classList.add('hidden');
-        });
-
-        document.getElementById('btn-imprimir-qr').addEventListener('click', function() {
-            var nombre = document.getElementById('insumo-nombre').value || "Insumo Chuyma";
-            var lote = document.getElementById('insumo-lote').value || "S/L";
-            var qrHtml = qrcodeContainer.innerHTML;
-            var win = window.open('', '_blank', 'width=400,height=400');
-            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Lote: '+lote+'</p><div>'+qrHtml+'</div><script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
-            win.document.close();
-        });
-
-        var contenedorCamara = document.getElementById('contenedor-camara');
-        document.getElementById('btn-abrir-camara').addEventListener('click', function() {
-            contenedorCamara.classList.remove('hidden');
-            qrScanner = new Html5Qrcode("lector-qr");
-            qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-                function(idScaneado) {
-                    qrScanner.stop().then(function() {
-                        contenedorCamara.classList.add('hidden');
-                        verFicha(idScaneado);
-                    });
-                }, function() {}
-            ).catch(function() { alert("Camara no disponible."); contenedorCamara.classList.add('hidden'); });
-        });
-
-        document.getElementById('btn-cerrar-camara').addEventListener('click', function() {
-            if (qrScanner) qrScanner.stop().then(function() { contenedorCamara.classList.add('hidden'); });
-            else contenedorCamara.classList.add('hidden');
-        });
-    </script>
-</body>
-</html>
+                payload.sub = document.getElementById('lab-sub').value;
+                payload.concentracion = document.getElementById('lab-concen').value;
+                payload.fecha = document.getElementById('lab-fecha').value;
+            } else if(cat === 'levadura') {
+                payload.laboratorio = document.getElementById('lev-lab').value;
+                payload.formato = document.getElementById('lev-formato').value;
+                payload.fecha = document.getElementById('lev
