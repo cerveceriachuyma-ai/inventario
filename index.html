@@ -169,16 +169,24 @@
         var qrcodeContainer = document.getElementById('qrcode-container');
         var camposDinamicos = document.getElementById('campos-dinamicos');
 
+        // FLUJO DE AUTENTICACIÓN CONTROLADO Y REPARADO (.THEN ADICIONADO)
         document.getElementById('btn-login').addEventListener('click', function(e) {
             e.preventDefault();
             errorTxt.classList.add('hidden');
             var email = document.getElementById('login-email').value.trim();
             var pass = document.getElementById('login-password').value.trim();
             if(!email || !pass) return;
-            auth.signInWithEmailAndPassword(email, pass).catch(function() {
-                errorTxt.textContent = "Clave o usuario incorrecto.";
-                errorTxt.classList.remove('hidden');
-            });
+            
+            auth.signInWithEmailAndPassword(email, pass)
+                .then(function(userCredential) {
+                    // Éxito explícito: la sesión cambia y gatilla onAuthStateChanged automáticamente
+                    console.log("Autenticación exitosa");
+                })
+                .catch(function(error) {
+                    console.error("Error de login:", error);
+                    errorTxt.textContent = "Clave o usuario incorrecto.";
+                    errorTxt.classList.remove('hidden');
+                });
         });
 
         document.getElementById('btn-logout').addEventListener('click', function() { auth.signOut(); });
@@ -186,7 +194,7 @@
         auth.onAuthStateChanged(function(user) {
             if (user) {
                 vistaLogin.classList.add('hidden');
-                vistaApp.classList.remove('hidden');
+                vistaApp.setTimeout ? null : vistaApp.classList.remove('hidden');
                 db.collection("inventario").onSnapshot(function(snapshot) {
                     insumosLocales = [];
                     snapshot.forEach(function(doc) {
@@ -350,4 +358,136 @@
                             <option value="Botellas" ${datos.tipo === 'Botellas' ? 'selected' : ''}>Botellas</option>
                             <option value="Cajas" ${datos.tipo === 'Cajas' ? 'selected' : ''}>Cajas</option>
                             <option value="Tapas Corona" ${datos.tipo === 'Tapas Corona' ? 'selected' : ''}>Tapas Corona</option>
-                            <option value="
+                            <option value="Latas" ${datos.tipo === 'Latas' ? 'selected' : ''}>Latas</option>
+                            <option value="Tapas de Latas" ${datos.tipo === 'Tapas de Latas' ? 'selected' : ''}>Tapas de Latas</option>
+                            <option value="Etiquetas" ${datos.tipo === 'Etiquetas' ? 'selected' : ''}>Etiquetas</option>
+                            <option value="CO2" ${datos.tipo === 'CO2' ? 'selected' : ''}>CO2 (Dióxido de Carbono)</option>
+                        </select></div>
+                    <div><label id="label-seco-variable" class="text-[10px] font-bold text-gray-400 uppercase">Capacidad / Volumen</label>
+                         <input type="text" id="emp-variable" value="${datos.variable || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
+                `;
+            }
+        }
+
+        window.toggleEmpaqueLabel = function(val) {
+            var label = document.getElementById('label-seco-variable');
+            if (!label) return;
+            if (val === 'Etiquetas') {
+                label.textContent = "Producto al que pertenece";
+            } else if (val === 'CO2') {
+                label.textContent = "Capacidad del Cilindro / Formato";
+            } else {
+                label.textContent = "Capacidad / Volumen";
+            }
+        };
+
+        window.verFicha = function(id) {
+            idInsumoSeleccionado = id;
+            var item = insumosLocales.find(function(i) { return i.id === id; });
+            document.getElementById('form-titulo').textContent = "Detalle del Insumo";
+            document.getElementById('insumo-categoria').value = item.categoria;
+            document.getElementById('insumo-nombre').value = item.nombre;
+            document.getElementById('insumo-stock').value = item.stock;
+            document.getElementById('insumo-minimo').value = item.minimo || "";
+            document.getElementById('insumo-lote').value = item.lote || '';
+            
+            pintarCamposDinamicos(item.categoria, item);
+            
+            if(item.categoria === 'empaque' && item.tipo) {
+                setTimeout(function() {
+                    var tipoSelect = document.getElementById('emp-tipo');
+                    if(tipoSelect) {
+                        tipoSelect.value = item.tipo;
+                        toggleEmpaqueLabel(item.tipo);
+                    }
+                }, 50);
+            }
+
+            qrcodeContainer.innerHTML = "";
+            new QRCode(qrcodeContainer, { text: id, width: 120, height: 120 });
+            formInsumo.classList.remove('hidden');
+            formInsumo.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
+            idInsumoSeleccionado = null;
+            document.getElementById('form-titulo').textContent = "Registrar Nuevo Elemento";
+            document.getElementById('insumo-nombre').value = "";
+            document.getElementById('insumo-stock').value = "";
+            document.getElementById('insumo-minimo').value = "";
+            document.getElementById('insumo-lote').value = "";
+            qrcodeContainer.innerHTML = "<p class='text-[10px] text-gray-650 p-4 font-bold uppercase'>Se creará al guardar</p>";
+            pintarCamposDinamicos('malta');
+            formInsumo.classList.remove('hidden');
+            formInsumo.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        document.getElementById('btn-cancelar').addEventListener('click', function() { formInsumo.classList.add('hidden'); });
+
+        document.getElementById('btn-guardar').addEventListener('click', function() {
+            var cat = document.getElementById('insumo-categoria').value;
+            var payload = {
+                categoria: cat,
+                nombre: document.getElementById('insumo-nombre').value.trim(),
+                stock: Number(document.getElementById('insumo-stock').value),
+                minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
+                lote: document.getElementById('insumo-lote').value.trim(),
+            };
+            if (!payload.nombre) return;
+
+            if(cat === 'malta') {
+                payload.origen = document.getElementById('m-origen')?.value || '';
+                payload.color = document.getElementById('m-color')?.value || '';
+            } else if(cat === 'lupulo') {
+                payload.formato = document.getElementById('l-formato')?.value || '';
+                payload.alfa = document.getElementById('l-alfa')?.value || '';
+            } else if(cat === 'clarificante') {
+                payload.uso = document.getElementById('c-uso')?.value || '';
+                payload.formato = document.getElementById('c-formato')?.value || '';
+            } else if(cat === 'laboratorio') {
+                payload.sub = document.getElementById('lab-sub')?.value || '';
+                payload.fecha = document.getElementById('lab-fecha')?.value || '';
+            } else if(cat === 'levadura') {
+                payload.laboratorio = document.getElementById('lev-lab')?.value || '';
+                payload.formato = document.getElementById('lev-formato')?.value || '';
+            } else if(cat === 'limpieza') {
+                payload.tipo = document.getElementById('lim-tipo')?.value || '';
+            } else if(cat === 'empaque') {
+                payload.tipo = document.getElementById('emp-tipo')?.value || '';
+                payload.variable = document.getElementById('emp-variable')?.value || '';
+            }
+
+            if (idInsumoSeleccionado) db.collection("inventario").doc(idInsumoSeleccionado).update(payload);
+            else db.collection("inventario").add(payload);
+            
+            formInsumo.classList.add('hidden');
+        });
+
+        document.getElementById('btn-imprimir-qr').addEventListener('click', function() {
+            var nombre = document.getElementById('insumo-nombre').value || "Insumo Chuyma";
+            var lote = document.getElementById('insumo-lote').value || "S/L";
+            var win = window.open('', '_blank', 'width=400,height=400');
+            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Lote: '+lote+'</p><div>'+qrcodeContainer.innerHTML+'</div><script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+            win.document.close();
+        });
+
+        document.getElementById('btn-abrir-camara').addEventListener('click', function() {
+            document.getElementById('contenedor-camara').classList.remove('hidden');
+            qrScanner = new Html5Qrcode("lector-qr");
+            qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 },
+                function(idScaneado) {
+                    qrScanner.stop().then(function() {
+                        document.getElementById('contenedor-camara').classList.add('hidden');
+                        verFicha(idScaneado);
+                    });
+                }, function() {}
+            ).catch(function() { document.getElementById('contenedor-camara').classList.add('hidden'); });
+        });
+
+        document.getElementById('btn-cerrar-camara').addEventListener('click', function() {
+            if (qrScanner) qrScanner.stop().then(function() { document.getElementById('contenedor-camara').classList.add('hidden'); });
+            else document.getElementById('contenedor-camara').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
