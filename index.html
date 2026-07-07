@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHUYMA BODEGA - Control Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
 
@@ -17,9 +16,9 @@
     <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen p-4">
         <div class="bg-gray-800 p-8 rounded-2xl w-full max-w-sm border border-amber-500">
             <h1 class="text-3xl font-black text-amber-500 text-center mb-6">CHUYMA LOGIN</h1>
-            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 bg-gray-900 rounded-xl">
-            <input type="password" id="login-password" placeholder="Clave" class="w-full p-3 mb-4 bg-gray-900 rounded-xl">
-            <button id="btn-login" class="w-full bg-amber-500 text-black font-black p-3 rounded-xl">INGRESAR</button>
+            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 bg-gray-900 rounded-xl border border-gray-700">
+            <input type="password" id="login-password" placeholder="Clave" class="w-full p-3 mb-4 bg-gray-900 rounded-xl border border-gray-700">
+            <button id="btn-login" class="w-full bg-amber-500 text-black font-black p-3 rounded-xl hover:bg-amber-600">INGRESAR</button>
             <p id="login-error" class="text-red-400 text-sm mt-2 hidden"></p>
         </div>
     </div>
@@ -27,13 +26,16 @@
     <!-- APP -->
     <div id="vista-app" class="hidden p-4 max-w-4xl mx-auto">
         <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-black text-amber-500">BODEGA CHUYMA</h1>
-            <button id="btn-logout" class="bg-red-900 text-red-200 px-4 py-2 rounded-lg text-xs">SALIR</button>
+            <div>
+                <h1 class="text-2xl font-black text-amber-500">BODEGA CHUYMA</h1>
+                <p class="text-xs text-gray-500 font-bold">CONTROL Y TRAZABILIDAD</p>
+            </div>
+            <button id="btn-logout" class="bg-red-900/50 text-red-200 px-4 py-2 rounded-lg text-xs font-bold border border-red-800">SALIR</button>
         </header>
 
         <div class="grid grid-cols-2 gap-4 mb-6">
-            <button id="btn-nuevo-insumo" class="bg-amber-500 text-black font-black p-4 rounded-xl">📦 NUEVO INSUMO</button>
-            <button onclick="generarReporte()" class="bg-gray-700 text-white font-bold p-4 rounded-xl">📊 EXPORTAR CSV</button>
+            <button id="btn-nuevo-insumo" class="bg-amber-500 text-black font-black p-4 rounded-xl hover:bg-amber-600 transition">📦 NUEVO INSUMO</button>
+            <button onclick="generarReporte()" class="bg-gray-700 text-white font-bold p-4 rounded-xl hover:bg-gray-600 transition">📊 EXPORTAR CSV</button>
         </div>
 
         <div id="lista-insumos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -41,44 +43,46 @@
 
     <!-- FORMULARIO -->
     <div id="form-insumo" class="hidden fixed inset-0 bg-black/80 p-4 flex items-center justify-center z-50">
-        <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-700">
             <h2 id="form-titulo" class="text-xl font-black text-amber-500 mb-4">Ficha Técnica</h2>
             <div class="space-y-3">
-                <input type="text" id="insumo-nombre" placeholder="Nombre" class="w-full p-3 bg-gray-900 rounded-xl">
-                <select id="insumo-categoria" class="w-full p-3 bg-gray-900 rounded-xl text-white">
+                <input type="text" id="insumo-nombre" placeholder="Nombre del Insumo" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
+                <select id="insumo-categoria" class="w-full p-3 bg-gray-900 rounded-xl text-white border border-gray-700">
                     <option value="malta">Malta</option>
                     <option value="lupulo">Lúpulo</option>
                     <option value="levadura">Levadura</option>
                     <option value="laboratorio">Laboratorio</option>
                 </select>
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="insumo-stock" placeholder="Stock" class="w-full p-3 bg-gray-900 rounded-xl">
-                    <select id="insumo-unidad" class="w-full p-3 bg-gray-900 rounded-xl">
+                    <input type="number" id="insumo-stock" placeholder="Stock" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
+                    <select id="insumo-unidad" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
                         <option value="kg">kg</option>
                         <option value="g">g</option>
+                        <option value="l">l</option>
                         <option value="unidades">u</option>
                     </select>
                 </div>
-                <input type="date" id="insumo-fecha-ingreso" class="w-full p-3 bg-gray-900 rounded-xl">
-                <input type="text" id="insumo-documento" placeholder="N° Factura/Boleta" class="w-full p-3 bg-gray-900 rounded-xl">
-                <input type="text" id="insumo-lote" placeholder="Lote" class="w-full p-3 bg-gray-900 rounded-xl">
+                <input type="date" id="insumo-fecha-ingreso" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
+                <input type="text" id="insumo-documento" placeholder="N° Factura/Boleta" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
+                <input type="text" id="insumo-lote" placeholder="Lote Trazabilidad" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
             </div>
             <div class="mt-6 flex gap-2">
                 <button id="btn-guardar" class="flex-1 bg-amber-500 text-black font-black p-3 rounded-xl">GUARDAR</button>
-                <button id="btn-eliminar" class="bg-red-900 text-red-200 px-4 rounded-xl">BORRAR</button>
-                <button id="btn-cancelar" class="bg-gray-700 px-4 rounded-xl">X</button>
+                <button id="btn-eliminar" class="bg-red-900 text-red-200 px-4 rounded-xl font-bold">BORRAR</button>
+                <button id="btn-cancelar" class="bg-gray-700 px-4 rounded-xl font-bold">X</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Configuración integrada
         var firebaseConfig = {
-            apiKey: "TU_API_KEY_AQUI",
-            authDomain: "TU_PROYECTO.firebaseapp.com",
-            projectId: "TU_PROYECTO",
-            storageBucket: "TU_PROYECTO.appspot.com",
-            messagingSenderId: "TU_ID",
-            appId: "TU_APP_ID"
+            apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
+            authDomain: "inventariochuyma-da052.firebaseapp.com",
+            projectId: "inventariochuyma-da052",
+            storageBucket: "inventariochuyma-da052.firebasestorage.app",
+            messagingSenderId: "677439195293",
+            appId: "1:677439195293:web:50b624de9e0c877c89ec74"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -110,9 +114,9 @@
                 const card = document.createElement('div');
                 card.className = `p-4 rounded-xl border ${esAgotado ? 'border-red-500 bg-red-900/20' : 'border-gray-700 bg-gray-800'}`;
                 card.innerHTML = `
-                    <h3 class="font-bold">${item.nombre}</h3>
+                    <h3 class="font-bold text-lg">${item.nombre}</h3>
                     <p class="text-sm text-gray-400">Stock: ${esAgotado ? '<span class="text-red-500 font-black">AGOTADO</span>' : item.stock + ' ' + item.unidad}</p>
-                    <button onclick="editarInsumo('${item.id}')" class="mt-2 w-full bg-gray-900 p-2 rounded-lg text-xs">EDITAR</button>
+                    <button onclick="editarInsumo('${item.id}')" class="mt-3 w-full bg-gray-900 p-2 rounded-lg text-xs font-bold text-amber-500 border border-gray-700">EDITAR / CONSUMIR</button>
                 `;
                 lista.appendChild(card);
             });
@@ -137,33 +141,48 @@
             idInsumoSeleccionado = id;
             const item = insumosLocales.find(i => i.id === id);
             document.getElementById('insumo-nombre').value = item.nombre;
+            document.getElementById('insumo-categoria').value = item.categoria;
             document.getElementById('insumo-stock').value = item.stock;
+            document.getElementById('insumo-unidad').value = item.unidad;
+            document.getElementById('insumo-fecha-ingreso').value = item.fechaIngreso || "";
+            document.getElementById('insumo-documento').value = item.documento || "";
+            document.getElementById('insumo-lote').value = item.lote || "";
+            document.getElementById('form-titulo').textContent = "Editar Insumo";
             document.getElementById('form-insumo').classList.remove('hidden');
         };
 
         window.generarReporte = () => {
-            let csv = "Nombre,Stock,Unidad,Fecha Ingreso,Documento\n";
-            insumosLocales.forEach(i => csv += `${i.nombre},${i.stock},${i.unidad},${i.fechaIngreso},${i.documento}\n`);
+            let csv = "Nombre,Categoria,Stock,Unidad,Fecha Ingreso,Documento,Lote\n";
+            insumosLocales.forEach(i => csv += `${i.nombre},${i.categoria},${i.stock},${i.unidad},${i.fechaIngreso},${i.documento},${i.lote}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-            a.download = 'reporte.csv';
+            a.href = url;
+            a.download = 'Reporte_Bodega_Chuyma.csv';
             a.click();
         };
 
         document.getElementById('btn-login').addEventListener('click', () => {
             auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value)
             .catch(e => {
-                document.getElementById('login-error').classList.remove('hidden');
-                document.getElementById('login-error').textContent = e.message;
+                const err = document.getElementById('login-error');
+                err.classList.remove('hidden');
+                err.textContent = e.message;
             });
         });
 
-        document.getElementById('btn-nuevo-insumo').addEventListener('click', () => { idInsumoSeleccionado = null; document.getElementById('form-insumo').classList.remove('hidden'); });
+        document.getElementById('btn-nuevo-insumo').addEventListener('click', () => { 
+            idInsumoSeleccionado = null; 
+            document.getElementById('form-titulo').textContent = "Nuevo Insumo";
+            document.getElementById('form-insumo').classList.remove('hidden'); 
+        });
         document.getElementById('btn-cancelar').addEventListener('click', () => document.getElementById('form-insumo').classList.add('hidden'));
         document.getElementById('btn-logout').addEventListener('click', () => auth.signOut());
         document.getElementById('btn-eliminar').addEventListener('click', () => {
-            if(idInsumoSeleccionado) db.collection("inventario").doc(idInsumoSeleccionado).delete();
-            document.getElementById('form-insumo').classList.add('hidden');
+            if(idInsumoSeleccionado && confirm("¿Borrar permanentemente?")) {
+                db.collection("inventario").doc(idInsumoSeleccionado).delete();
+                document.getElementById('form-insumo').classList.add('hidden');
+            }
         });
     </script>
 </body>
