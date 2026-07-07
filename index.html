@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHUYMA BODEGA - Control Total</title>
+    <title>CHUYMA BODEGA - Trazabilidad Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -11,187 +11,73 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
-
-    <!-- LOGIN -->
-    <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen p-4">
-        <div class="bg-gray-800 p-8 rounded-2xl w-full max-w-sm border border-amber-500">
-            <h1 class="text-3xl font-black text-amber-500 text-center mb-6">CHUYMA LOGIN</h1>
-            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 bg-gray-900 rounded-xl border border-gray-700">
-            <input type="password" id="login-password" placeholder="Clave" class="w-full p-3 mb-4 bg-gray-900 rounded-xl border border-gray-700">
-            <button id="btn-login" class="w-full bg-amber-500 text-black font-black p-3 rounded-xl">INGRESAR</button>
-        </div>
-    </div>
-
-    <!-- APP -->
+    <!-- ESTRUCTURA DE APP SIMPLIFICADA -->
     <div id="vista-app" class="hidden p-4 max-w-4xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-black text-amber-500">BODEGA CHUYMA</h1>
-            <button id="btn-logout" class="bg-red-900 text-red-200 px-4 py-2 rounded-lg text-xs">SALIR</button>
-        </header>
-
-        <!-- PESTAÑAS DE ACCESO DIRECTO -->
-        <div id="tabs" class="flex gap-2 overflow-x-auto pb-4 mb-2">
-            <button onclick="filtrar('todas')" class="px-4 py-2 bg-amber-500 text-black font-bold rounded-lg text-sm whitespace-nowrap">Todas</button>
-            <button onclick="filtrar('malta')" class="px-4 py-2 bg-gray-700 font-bold rounded-lg text-sm whitespace-nowrap">Maltas</button>
-            <button onclick="filtrar('lupulo')" class="px-4 py-2 bg-gray-700 font-bold rounded-lg text-sm whitespace-nowrap">Lúpulos</button>
-            <button onclick="filtrar('levadura')" class="px-4 py-2 bg-gray-700 font-bold rounded-lg text-sm whitespace-nowrap">Levaduras</button>
-            <button onclick="filtrar('laboratorio')" class="px-4 py-2 bg-gray-700 font-bold rounded-lg text-sm whitespace-nowrap">Lab</button>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <button id="btn-nuevo-insumo" class="bg-amber-500 text-black font-black p-4 rounded-xl">📦 NUEVO</button>
-            <button onclick="generarReporte()" class="bg-gray-700 text-white font-bold p-4 rounded-xl">📊 EXPORTAR</button>
-        </div>
-
+        <h1 class="text-2xl font-black text-amber-500 mb-6">BODEGA CHUYMA</h1>
         <div id="lista-insumos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
 
-    <!-- FORMULARIO -->
+    <!-- FORMULARIO DE FICHA Y CONSUMO -->
     <div id="form-insumo" class="hidden fixed inset-0 bg-black/90 p-4 flex items-center justify-center z-50 overflow-y-auto">
         <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-lg border border-gray-700">
             <h2 id="form-titulo" class="text-xl font-black text-amber-500 mb-4">Ficha Técnica</h2>
             
-            <div id="qr-section" class="hidden flex flex-col items-center mb-4 bg-white p-2 rounded-lg">
-                <div id="qrcode"></div>
-                <p id="codigo-interno" class="text-black font-mono text-xs mt-2"></p>
+            <div class="space-y-3">
+                <input type="text" id="insumo-nombre" placeholder="Nombre" class="w-full p-3 bg-gray-900 rounded-xl">
+                <input type="date" id="insumo-fecha-ingreso" class="w-full p-3 bg-gray-900 rounded-xl">
+                <input type="text" id="insumo-documento" placeholder="N° Factura" class="w-full p-3 bg-gray-900 rounded-xl">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="insumo-stock" placeholder="Stock" class="w-full p-3 bg-gray-900 rounded-xl">
+                    <select id="insumo-unidad" class="w-full p-3 bg-gray-900 rounded-xl"><option value="kg">kg</option><option value="g">g</option></select>
+                </div>
             </div>
 
-            <div class="space-y-3">
-                <input type="text" id="insumo-nombre" placeholder="Nombre" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
-                <select id="insumo-categoria" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
-                    <option value="malta">Malta</option>
-                    <option value="lupulo">Lúpulo</option>
-                    <option value="levadura">Levadura</option>
-                    <option value="laboratorio">Laboratorio</option>
-                </select>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="insumo-stock" placeholder="Stock" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
-                    <select id="insumo-unidad" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
-                        <option value="kg">kg</option>
-                        <option value="g">g</option>
-                        <option value="unidades">u</option>
-                    </select>
-                </div>
-                <input type="text" id="insumo-lote" placeholder="Lote Trazabilidad" class="w-full p-3 bg-gray-900 rounded-xl border border-gray-700">
+            <!-- SECCIÓN CONSUMO -->
+            <div class="mt-6 border-t border-gray-700 pt-4">
+                <h3 class="text-amber-500 font-bold mb-2">Registrar Consumo (Salida)</h3>
+                <input type="text" id="bf-lote" placeholder="Lote Brewfather" class="w-full p-3 bg-gray-900 rounded-xl mb-2">
+                <button id="btn-consumir" class="w-full bg-red-800 text-white font-black p-3 rounded-xl">CONFIRMAR SALIDA DE BODEGA</button>
             </div>
             
             <div class="mt-6 flex gap-2">
-                <button id="btn-guardar" class="flex-1 bg-amber-500 text-black font-black p-3 rounded-xl">GUARDAR</button>
-                <button id="btn-eliminar" class="bg-red-900 text-red-200 px-4 rounded-xl font-bold">BORRAR</button>
-                <button id="btn-cancelar" class="bg-gray-700 px-4 rounded-xl font-bold">X</button>
+                <button id="btn-guardar" class="flex-1 bg-amber-500 text-black font-black p-3 rounded-xl">GUARDAR FICHA</button>
+                <button id="btn-cancelar" class="bg-gray-700 px-4 rounded-xl">X</button>
             </div>
         </div>
     </div>
 
     <script>
-        var firebaseConfig = {
-            apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
-            authDomain: "inventariochuyma-da052.firebaseapp.com",
-            projectId: "inventariochuyma-da052",
-            storageBucket: "inventariochuyma-da052.firebasestorage.app",
-            messagingSenderId: "677439195293",
-            appId: "1:677439195293:web:50b624de9e0c877c89ec74"
-        };
-
+        var firebaseConfig = { /* TUS DATOS AQUÍ */ };
         firebase.initializeApp(firebaseConfig);
-        var auth = firebase.auth();
         var db = firebase.firestore();
-        var insumosLocales = [];
-        var idInsumoSeleccionado = null;
-        var categoriaFiltro = 'todas';
 
-        function filtrar(cat) {
-            categoriaFiltro = cat;
-            renderLista();
-        }
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('vista-login').classList.add('hidden');
-                document.getElementById('vista-app').classList.remove('hidden');
-                db.collection("inventario").onSnapshot(snapshot => {
-                    insumosLocales = [];
-                    snapshot.forEach(doc => insumosLocales.push({id: doc.id, ...doc.data()}));
-                    renderLista();
-                });
-            } else {
-                document.getElementById('vista-login').classList.remove('hidden');
-                document.getElementById('vista-app').classList.add('hidden');
-            }
-        });
-
-        function renderLista() {
-            const lista = document.getElementById('lista-insumos');
-            lista.innerHTML = "";
-            insumosLocales.forEach(item => {
-                if (categoriaFiltro !== 'todas' && item.categoria !== categoriaFiltro) return;
-                
-                const esAgotado = Number(item.stock) <= 0;
-                const card = document.createElement('div');
-                card.className = `p-4 rounded-xl border ${esAgotado ? 'border-red-500 bg-red-900/20' : 'border-gray-700 bg-gray-800'}`;
-                card.innerHTML = `
-                    <h3 class="font-bold text-lg">${item.nombre}</h3>
-                    <p class="text-sm">Stock: ${esAgotado ? '<span class="text-red-500 font-black">AGOTADO</span>' : item.stock + ' ' + item.unidad}</p>
-                    <button onclick="abrirFicha('${item.id}')" class="mt-3 w-full bg-gray-900 p-2 rounded-lg text-xs font-bold text-amber-500 border border-gray-700">FICHA / QR</button>
-                `;
-                lista.appendChild(card);
-            });
-        }
-
-        window.abrirFicha = (id) => {
-            idInsumoSeleccionado = id;
-            const item = insumosLocales.find(i => i.id === id);
-            document.getElementById('insumo-nombre').value = item.nombre;
-            document.getElementById('insumo-categoria').value = item.categoria;
-            document.getElementById('insumo-stock').value = item.stock;
-            document.getElementById('insumo-unidad').value = item.unidad;
-            document.getElementById('insumo-lote').value = item.lote || "";
+        // LOGICA DE CONSUMO (SALIDA)
+        document.getElementById('btn-consumir').addEventListener('click', () => {
+            const loteBF = document.getElementById('bf-lote').value;
+            if(!loteBF) { alert("¡Falta el lote de Brewfather!"); return; }
             
-            document.getElementById('qr-section').classList.remove('hidden');
-            document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), { text: id, width: 100, height: 100 });
-            document.getElementById('codigo-interno').textContent = "ID: " + id;
-            document.getElementById('form-insumo').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-guardar').addEventListener('click', () => {
-            const data = {
-                nombre: document.getElementById('insumo-nombre').value,
-                categoria: document.getElementById('insumo-categoria').value,
-                stock: Number(document.getElementById('insumo-stock').value),
-                unidad: document.getElementById('insumo-unidad').value,
-                lote: document.getElementById('insumo-lote').value
-            };
-            if(idInsumoSeleccionado) db.collection("inventario").doc(idInsumoSeleccionado).update(data);
-            else db.collection("inventario").add(data);
-            document.getElementById('form-insumo').classList.add('hidden');
+            const ref = db.collection("inventario").doc(idInsumoSeleccionado);
+            db.runTransaction(async (t) => {
+                const doc = await t.get(ref);
+                const nuevoStock = doc.data().stock - 1; // Ajusta según tu necesidad
+                t.update(ref, { 
+                    stock: nuevoStock,
+                    historialSalidas: firebase.firestore.FieldValue.arrayUnion({
+                        fecha: new Date().toLocaleString(),
+                        loteBF: loteBF
+                    })
+                });
+            }).then(() => alert("Salida registrada con éxito."));
         });
 
-        document.getElementById('btn-nuevo-insumo').addEventListener('click', () => {
-            idInsumoSeleccionado = null;
-            document.getElementById('qr-section').classList.add('hidden');
-            document.getElementById('form-insumo').classList.remove('hidden');
-        });
-        
-        document.getElementById('btn-cancelar').addEventListener('click', () => document.getElementById('form-insumo').classList.add('hidden'));
-        document.getElementById('btn-logout').addEventListener('click', () => auth.signOut());
-        document.getElementById('btn-eliminar').addEventListener('click', () => {
-            if(idInsumoSeleccionado && confirm("¿Borrar permanentemente?")) {
-                db.collection("inventario").doc(idInsumoSeleccionado).delete();
-                document.getElementById('form-insumo').classList.add('hidden');
-            }
-        });
-        
         window.generarReporte = () => {
-            let csv = "Nombre,Categoria,Stock,Unidad,Lote\n";
-            insumosLocales.forEach(i => csv += `${i.nombre},${i.categoria},${i.stock},${i.unidad},${i.lote}\n`);
-            const a = document.createElement('a');
-            a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-            a.download = 'Reporte_Chuyma.csv';
-            a.click();
+            let csv = "Nombre,Stock,Fecha Ingreso,Factura,Historial Salidas (Fecha | LoteBF)\n";
+            insumosLocales.forEach(i => {
+                const historial = i.historialSalidas ? i.historialSalidas.map(s => `${s.fecha} | ${s.loteBF}`).join("; ") : "Sin salidas";
+                csv += `${i.nombre},${i.stock},${i.fechaIngreso},${i.documento},"${historial}"\n`;
+            });
+            // ... (resto de la lógica de descarga)
         };
-
-        document.getElementById('btn-login').addEventListener('click', () => auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value));
     </script>
 </body>
 </html>
