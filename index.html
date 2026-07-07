@@ -2,72 +2,169 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Chuyma Bodega & Lab - v2.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHUYMA BODEGA - Control Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <!-- ... resto de tus scripts (qr, etc) ... -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
-<body class="bg-gray-900 text-gray-100">
+<body class="bg-gray-900 text-gray-100 min-h-screen">
 
-<!-- FORMULARIO DE INGRESO ACTUALIZADO -->
-<div id="form-insumo" class="hidden bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
-    <h2 id="form-titulo" class="text-amber-500 font-black text-xl">Ficha Técnica</h2>
-    
-    <!-- NUEVOS CAMPOS -->
-    <div class="grid grid-cols-2 gap-4">
-        <div>
-            <label class="text-[10px] uppercase font-bold text-gray-400">Fecha Ingreso</label>
-            <input type="date" id="insumo-fecha-ingreso" class="w-full bg-gray-800 rounded-xl p-2 text-white">
-        </div>
-        <div>
-            <label class="text-[10px] uppercase font-bold text-gray-400">N° Factura/Boleta</label>
-            <input type="text" id="insumo-documento" placeholder="Ej: FA-1234" class="w-full bg-gray-800 rounded-xl p-2 text-white">
+    <!-- LOGIN -->
+    <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl w-full max-w-sm border border-amber-500">
+            <h1 class="text-3xl font-black text-amber-500 text-center mb-6">CHUYMA LOGIN</h1>
+            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 bg-gray-900 rounded-xl">
+            <input type="password" id="login-password" placeholder="Clave" class="w-full p-3 mb-4 bg-gray-900 rounded-xl">
+            <button id="btn-login" class="w-full bg-amber-500 text-black font-black p-3 rounded-xl">INGRESAR</button>
+            <p id="login-error" class="text-red-400 text-sm mt-2 hidden"></p>
         </div>
     </div>
 
-    <!-- CAMPOS EXISTENTES (Lote ahora va después) -->
-    <div>
-        <label class="text-[10px] uppercase font-bold text-gray-400">Lote Trazabilidad</label>
-        <input type="text" id="insumo-lote" class="w-full bg-gray-800 rounded-xl p-2 text-white">
+    <!-- APP -->
+    <div id="vista-app" class="hidden p-4 max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-black text-amber-500">BODEGA CHUYMA</h1>
+            <button id="btn-logout" class="bg-red-900 text-red-200 px-4 py-2 rounded-lg text-xs">SALIR</button>
+        </header>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <button id="btn-nuevo-insumo" class="bg-amber-500 text-black font-black p-4 rounded-xl">📦 NUEVO INSUMO</button>
+            <button onclick="generarReporte()" class="bg-gray-700 text-white font-bold p-4 rounded-xl">📊 EXPORTAR CSV</button>
+        </div>
+
+        <div id="lista-insumos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
 
-    <!-- CAMPO DE REGISTRO DE SALIDA (Para el modal de uso) -->
-    <div id="seccion-salida" class="hidden border-t border-gray-800 pt-4 mt-4">
-        <label class="text-[10px] uppercase font-bold text-gray-400">Registrar Salida (Uso en Brewfather)</label>
-        <input type="text" id="brewfather-lote" placeholder="Lote Brewfather (Ej: B-001)" class="w-full bg-gray-800 rounded-xl p-2 mb-2">
-        <button onclick="ejecutarSalida()" class="w-full bg-red-600 text-white font-bold py-2 rounded-xl">Confirmar Consumo</button>
+    <!-- FORMULARIO -->
+    <div id="form-insumo" class="hidden fixed inset-0 bg-black/80 p-4 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 id="form-titulo" class="text-xl font-black text-amber-500 mb-4">Ficha Técnica</h2>
+            <div class="space-y-3">
+                <input type="text" id="insumo-nombre" placeholder="Nombre" class="w-full p-3 bg-gray-900 rounded-xl">
+                <select id="insumo-categoria" class="w-full p-3 bg-gray-900 rounded-xl text-white">
+                    <option value="malta">Malta</option>
+                    <option value="lupulo">Lúpulo</option>
+                    <option value="levadura">Levadura</option>
+                    <option value="laboratorio">Laboratorio</option>
+                </select>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="insumo-stock" placeholder="Stock" class="w-full p-3 bg-gray-900 rounded-xl">
+                    <select id="insumo-unidad" class="w-full p-3 bg-gray-900 rounded-xl">
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="unidades">u</option>
+                    </select>
+                </div>
+                <input type="date" id="insumo-fecha-ingreso" class="w-full p-3 bg-gray-900 rounded-xl">
+                <input type="text" id="insumo-documento" placeholder="N° Factura/Boleta" class="w-full p-3 bg-gray-900 rounded-xl">
+                <input type="text" id="insumo-lote" placeholder="Lote" class="w-full p-3 bg-gray-900 rounded-xl">
+            </div>
+            <div class="mt-6 flex gap-2">
+                <button id="btn-guardar" class="flex-1 bg-amber-500 text-black font-black p-3 rounded-xl">GUARDAR</button>
+                <button id="btn-eliminar" class="bg-red-900 text-red-200 px-4 rounded-xl">BORRAR</button>
+                <button id="btn-cancelar" class="bg-gray-700 px-4 rounded-xl">X</button>
+            </div>
+        </div>
     </div>
-</div>
 
-<script>
-    // ... tu configuración de firebase ...
+    <script>
+        var firebaseConfig = {
+            apiKey: "TU_API_KEY_AQUI",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_ID",
+            appId: "TU_APP_ID"
+        };
 
-    // Función para registrar la salida con auditoría
-    window.ejecutarSalida = function() {
-        var loteBrew = document.getElementById('brewfather-lote').value;
-        if (!loteBrew) { alert("Debes ingresar el lote de Brewfather"); return; }
-        
-        var fechaActual = new Date().toLocaleString();
-        var itemRef = db.collection("inventario").doc(idInsumoSeleccionado);
-        
-        // Aquí restamos stock y guardamos el registro en una sub-colección llamada "historial"
-        db.runTransaction(function(transaction) {
-            return transaction.get(itemRef).then(function(doc) {
-                var nuevoStock = Number(doc.data().stock) - 1;
-                transaction.update(itemRef, { stock: nuevoStock });
-                transaction.set(itemRef.collection("historial").doc(), {
-                    fecha: fechaActual,
-                    loteBrewfather: loteBrew,
-                    cantidadRestada: 1
+        firebase.initializeApp(firebaseConfig);
+        var auth = firebase.auth();
+        var db = firebase.firestore();
+        var insumosLocales = [];
+        var idInsumoSeleccionado = null;
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('vista-login').classList.add('hidden');
+                document.getElementById('vista-app').classList.remove('hidden');
+                db.collection("inventario").onSnapshot(snapshot => {
+                    insumosLocales = [];
+                    snapshot.forEach(doc => insumosLocales.push({id: doc.id, ...doc.data()}));
+                    renderLista();
                 });
-            });
-        }).then(function() {
-            alert("Salida registrada correctamente");
-            location.reload();
+            } else {
+                document.getElementById('vista-login').classList.remove('hidden');
+                document.getElementById('vista-app').classList.add('hidden');
+            }
         });
-    };
-</script>
+
+        function renderLista() {
+            const lista = document.getElementById('lista-insumos');
+            lista.innerHTML = "";
+            insumosLocales.forEach(item => {
+                const esAgotado = Number(item.stock) <= 0;
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border ${esAgotado ? 'border-red-500 bg-red-900/20' : 'border-gray-700 bg-gray-800'}`;
+                card.innerHTML = `
+                    <h3 class="font-bold">${item.nombre}</h3>
+                    <p class="text-sm text-gray-400">Stock: ${esAgotado ? '<span class="text-red-500 font-black">AGOTADO</span>' : item.stock + ' ' + item.unidad}</p>
+                    <button onclick="editarInsumo('${item.id}')" class="mt-2 w-full bg-gray-900 p-2 rounded-lg text-xs">EDITAR</button>
+                `;
+                lista.appendChild(card);
+            });
+        }
+
+        document.getElementById('btn-guardar').addEventListener('click', () => {
+            const data = {
+                nombre: document.getElementById('insumo-nombre').value,
+                categoria: document.getElementById('insumo-categoria').value,
+                stock: Number(document.getElementById('insumo-stock').value),
+                unidad: document.getElementById('insumo-unidad').value,
+                fechaIngreso: document.getElementById('insumo-fecha-ingreso').value,
+                documento: document.getElementById('insumo-documento').value,
+                lote: document.getElementById('insumo-lote').value
+            };
+            if(idInsumoSeleccionado) db.collection("inventario").doc(idInsumoSeleccionado).update(data);
+            else db.collection("inventario").add(data);
+            document.getElementById('form-insumo').classList.add('hidden');
+        });
+
+        window.editarInsumo = (id) => {
+            idInsumoSeleccionado = id;
+            const item = insumosLocales.find(i => i.id === id);
+            document.getElementById('insumo-nombre').value = item.nombre;
+            document.getElementById('insumo-stock').value = item.stock;
+            document.getElementById('form-insumo').classList.remove('hidden');
+        };
+
+        window.generarReporte = () => {
+            let csv = "Nombre,Stock,Unidad,Fecha Ingreso,Documento\n";
+            insumosLocales.forEach(i => csv += `${i.nombre},${i.stock},${i.unidad},${i.fechaIngreso},${i.documento}\n`);
+            const a = document.createElement('a');
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            a.download = 'reporte.csv';
+            a.click();
+        };
+
+        document.getElementById('btn-login').addEventListener('click', () => {
+            auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value)
+            .catch(e => {
+                document.getElementById('login-error').classList.remove('hidden');
+                document.getElementById('login-error').textContent = e.message;
+            });
+        });
+
+        document.getElementById('btn-nuevo-insumo').addEventListener('click', () => { idInsumoSeleccionado = null; document.getElementById('form-insumo').classList.remove('hidden'); });
+        document.getElementById('btn-cancelar').addEventListener('click', () => document.getElementById('form-insumo').classList.add('hidden'));
+        document.getElementById('btn-logout').addEventListener('click', () => auth.signOut());
+        document.getElementById('btn-eliminar').addEventListener('click', () => {
+            if(idInsumoSeleccionado) db.collection("inventario").doc(idInsumoSeleccionado).delete();
+            document.getElementById('form-insumo').classList.add('hidden');
+        });
+    </script>
 </body>
 </html>
