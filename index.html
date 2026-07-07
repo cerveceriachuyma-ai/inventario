@@ -2,125 +2,88 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHUYMA BODEGA</title>
+    <title>CHUYMA BODEGA - Control Violeta</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>body { background: linear-gradient(135deg, #4c1d95, #2e1065); min-height: 100vh; color: white; }</style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-
-    <!-- LOGIN -->
-    <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen p-4">
-        <div class="bg-gray-800 p-8 rounded-2xl w-full max-w-sm border border-amber-500">
-            <h1 class="text-3xl font-black text-amber-500 text-center mb-6">CHUYMA LOGIN</h1>
-            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 bg-gray-900 rounded-xl border border-gray-700 text-white">
-            <input type="password" id="login-password" placeholder="Clave" class="w-full p-3 mb-4 bg-gray-900 rounded-xl border border-gray-700 text-white">
-            <button id="btn-login" class="w-full bg-amber-500 text-black font-black p-3 rounded-xl">INGRESAR</button>
-        </div>
-    </div>
+<body class="p-4">
 
     <!-- APP -->
-    <div id="vista-app" class="hidden p-4 max-w-4xl mx-auto">
-        <h1 class="text-2xl font-black text-amber-500 mb-6">BODEGA CHUYMA</h1>
-        <div id="tabs" class="flex gap-2 mb-6 overflow-x-auto pb-2">
-            <button onclick="filtrar('todas')" class="px-4 py-2 bg-amber-500 text-black font-bold rounded-lg text-sm">Todas</button>
-            <button onclick="filtrar('malta')" class="px-4 py-2 bg-gray-700 font-bold rounded-lg text-sm">Maltas</button>
-            <button onclick="filtrar('lupulo')" class="px-4 py-2 bg-gray-700 font-bold rounded-lg text-sm">Lúpulos</button>
+    <div id="vista-app" class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-black text-purple-200">BODEGA CHUYMA</h1>
+            <button onclick="auth.signOut()" class="bg-purple-800 px-4 py-2 rounded-lg text-xs">SALIR</button>
+        </header>
+
+        <!-- NAVEGACIÓN -->
+        <div class="flex gap-2 overflow-x-auto pb-4 mb-4">
+            <button onclick="filtrar('todas')" class="px-4 py-2 bg-purple-700 rounded-lg">Todas</button>
+            <button onclick="filtrar('malta')" class="px-4 py-2 bg-purple-700 rounded-lg">Maltas</button>
+            <button onclick="filtrar('lupulo')" class="px-4 py-2 bg-purple-700 rounded-lg">Lúpulos</button>
+            <button onclick="filtrar('levadura')" class="px-4 py-2 bg-purple-700 rounded-lg">Levaduras</button>
+            <button onclick="filtrar('laboratorio')" class="px-4 py-2 bg-purple-700 rounded-lg">Lab</button>
         </div>
+
         <div class="grid grid-cols-2 gap-4 mb-6">
-            <button id="btn-nuevo" class="bg-amber-500 text-black font-black p-4 rounded-xl">📦 NUEVO</button>
-            <button onclick="generarReporte()" class="bg-gray-700 text-white font-bold p-4 rounded-xl">📊 EXPORTAR CSV</button>
+            <button onclick="abrirForm('nuevo')" class="bg-emerald-600 p-4 rounded-xl font-bold">📦 NUEVO INSUMO</button>
+            <button onclick="abrirForm('salida')" class="bg-rose-600 p-4 rounded-xl font-bold">📤 REGISTRAR SALIDA</button>
         </div>
+
         <div id="lista-insumos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
 
-    <!-- FORMULARIO -->
-    <div id="form-insumo" class="hidden fixed inset-0 bg-black/90 p-4 flex items-center justify-center z-50">
-        <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-lg border border-gray-700">
-            <h2 class="text-amber-500 font-black mb-4">Ficha Técnica</h2>
-            <div id="qr-display" class="flex justify-center mb-4"><div id="qrcode"></div></div>
-            <input type="text" id="nombre" placeholder="Nombre" class="w-full p-3 mb-2 bg-gray-900 rounded-xl text-white">
-            <input type="date" id="fecha" class="w-full p-3 mb-2 bg-gray-900 rounded-xl text-white">
-            <input type="text" id="lote" placeholder="Lote / Brewfather" class="w-full p-3 mb-2 bg-gray-900 rounded-xl text-white">
-            <input type="number" id="stock" placeholder="Stock" class="w-full p-3 mb-4 bg-gray-900 rounded-xl text-white">
+    <!-- FORMULARIO ÚNICO -->
+    <div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4">
+        <div class="bg-purple-900 p-6 rounded-2xl w-full max-w-lg border border-purple-500">
+            <h2 id="modal-titulo" class="text-xl font-black mb-4">Gestión</h2>
             
-            <div class="flex gap-2">
-                <button id="btn-guardar" class="flex-1 bg-amber-500 text-black font-black p-3 rounded-xl">GUARDAR</button>
-                <button id="btn-close" class="bg-gray-700 p-3 rounded-xl text-white">CERRAR</button>
+            <div id="seccion-qr" class="hidden flex flex-col items-center mb-4">
+                <div id="qrcode" class="bg-white p-2"></div>
+                <button onclick="descargarQR()" class="mt-2 text-xs underline">Descargar Etiqueta QR</button>
+            </div>
+
+            <div id="campos-form" class="space-y-3">
+                <!-- Se llenará dinámicamente -->
+            </div>
+
+            <div class="mt-6 flex gap-2">
+                <button id="btn-accion" class="flex-1 bg-purple-500 font-black p-3 rounded-xl">GUARDAR</button>
+                <button onclick="document.getElementById('modal').classList.add('hidden')" class="bg-purple-800 p-3 rounded-xl">CERRAR</button>
             </div>
         </div>
     </div>
 
     <script>
-        var config = {
-            apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
-            authDomain: "inventariochuyma-da052.firebaseapp.com",
-            projectId: "inventariochuyma-da052",
-            storageBucket: "inventariochuyma-da052.firebasestorage.app",
-            messagingSenderId: "677439195293",
-            appId: "1:677439195293:web:50b624de9e0c877c89ec74"
-        };
+        var config = { /* TU CONFIG DE FIREBASE AQUI */ };
         firebase.initializeApp(config);
-        var auth = firebase.auth();
         var db = firebase.firestore();
-        let insumos = [], idSel = null, catFiltro = 'todas';
-
-        auth.onAuthStateChanged(u => {
-            if (u) {
-                document.getElementById('vista-login').classList.add('hidden');
-                document.getElementById('vista-app').classList.remove('hidden');
-                db.collection("inventario").onSnapshot(s => {
-                    insumos = [];
-                    s.forEach(d => insumos.push({id: d.id, ...d.data()}));
-                    render();
-                });
+        
+        // Lógica de Renderizado y Filtros (Simplificada)
+        function abrirForm(tipo, id = null) {
+            const modal = document.getElementById('modal');
+            const campos = document.getElementById('campos-form');
+            if(tipo === 'nuevo') {
+                campos.innerHTML = `<input type="text" id="nombre" placeholder="Nombre" class="w-full p-2 bg-purple-800 rounded">
+                                    <input type="number" id="stock" placeholder="Stock" class="w-full p-2 bg-purple-800 rounded">
+                                    <input type="text" id="lote" placeholder="Lote Trazabilidad" class="w-full p-2 bg-purple-800 rounded">`;
+            } else {
+                // Lógica de Salida con select de insumos
+                campos.innerHTML = `<select id="select-insumo" class="w-full p-2 bg-purple-800 rounded"></select>
+                                    <input type="text" id="lote-bf" placeholder="Lote Brewfather" class="w-full p-2 bg-purple-800 rounded">`;
             }
-        });
-
-        function render() {
-            const list = document.getElementById('lista-insumos');
-            list.innerHTML = "";
-            insumos.forEach(i => {
-                if (catFiltro !== 'todas' && i.categoria !== catFiltro) return;
-                const div = document.createElement('div');
-                div.className = `p-4 rounded-xl border ${i.stock <= 0 ? 'border-red-500 bg-red-900/20' : 'border-gray-700 bg-gray-800'}`;
-                div.innerHTML = `<h3 class="font-bold">${i.nombre}</h3><p>Stock: ${i.stock <= 0 ? 'AGOTADO' : i.stock}</p>
-                                 <button onclick="editar('${i.id}')" class="mt-2 w-full bg-gray-900 p-2 text-amber-500 font-bold text-xs rounded">VER FICHA</button>`;
-                list.appendChild(div);
-            });
+            modal.classList.remove('hidden');
         }
 
-        window.editar = (id) => {
-            idSel = id;
-            const item = insumos.find(i => i.id === id);
-            document.getElementById('nombre').value = item.nombre;
-            document.getElementById('stock').value = item.stock;
-            document.getElementById('fecha').value = item.fecha || "";
-            document.getElementById('lote').value = item.lote || "";
-            document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById("qrcode"), { text: id, width: 100, height: 100 });
-            document.getElementById('form-insumo').classList.remove('hidden');
-        };
-
-        document.getElementById('btn-guardar').addEventListener('click', () => {
-            const data = { nombre: document.getElementById('nombre').value, stock: Number(document.getElementById('stock').value), fecha: document.getElementById('fecha').value, lote: document.getElementById('lote').value };
-            if(idSel) db.collection("inventario").doc(idSel).update(data);
-            document.getElementById('form-insumo').classList.add('hidden');
-        });
-
-        document.getElementById('btn-nuevo').addEventListener('click', () => { idSel = null; document.getElementById('form-insumo').classList.remove('hidden'); });
-        document.getElementById('btn-close').addEventListener('click', () => document.getElementById('form-insumo').classList.add('hidden'));
-        document.getElementById('btn-login').addEventListener('click', () => auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value));
-        document.getElementById('btn-logout').addEventListener('click', () => auth.signOut());
-        window.filtrar = (c) => { catFiltro = c; render(); };
-        window.generarReporte = () => {
-            let csv = "Nombre,Stock,Fecha,Lote\n";
-            insumos.forEach(i => csv += `${i.nombre},${i.stock},${i.fecha},${i.lote}\n`);
-            const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv); a.download = 'Reporte.csv'; a.click();
-        };
+        function descargarQR() {
+            const link = document.createElement('a');
+            link.download = 'etiqueta-chuyma.png';
+            link.href = document.getElementById('qrcode').querySelector('img').src;
+            link.click();
+        }
     </script>
 </body>
 </html>
