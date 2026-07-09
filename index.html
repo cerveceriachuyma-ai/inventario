@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BODEGA CHUYMA - Control Total</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -9,23 +10,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-900 text-white p-4">
-
     <div class="max-w-2xl mx-auto">
-        <h1 class="text-2xl font-black mb-6 text-purple-400">BODEGA CHUYMA</h1>
+        <h1 class="text-3xl font-black mb-6 text-purple-400">BODEGA CHUYMA</h1>
+        
         <div class="grid grid-cols-2 gap-4 mb-6">
-            <button onclick="abrirForm('nuevo')" class="bg-emerald-600 p-4 rounded-xl font-bold">📦 NUEVO INSUMO</button>
-            <button onclick="abrirForm('consumo')" class="bg-rose-600 p-4 rounded-xl font-bold">📤 CONSUMO RECETA</button>
+            <button onclick="abrirForm('nuevo')" class="bg-emerald-600 p-4 rounded-xl font-bold uppercase">📦 Nuevo Insumo</button>
+            <button onclick="abrirForm('consumo')" class="bg-rose-600 p-4 rounded-xl font-bold uppercase">📤 Consumo Receta</button>
         </div>
-        <div id="lista-insumos" class="space-y-4"></div>
+        <button onclick="generarReporte()" class="w-full bg-blue-700 p-3 rounded-xl font-bold mb-6 uppercase">📊 Descargar Reporte Mensual</button>
+
+        <div id="lista-insumos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
 
     <div id="modal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-        <div class="bg-purple-900 p-6 rounded-2xl w-full max-w-lg border border-purple-500">
+        <div class="bg-purple-900 p-6 rounded-2xl w-full max-w-lg border border-purple-500 max-h-[90vh] overflow-y-auto">
             <h2 id="modal-titulo" class="text-xl font-bold mb-4 uppercase">Gestión</h2>
             <div id="campos-form" class="space-y-3"></div>
             <div id="lista-receta" class="space-y-2 mt-4"></div>
-            
-            <div class="mt-6 flex gap-2">
+            <div id="seccion-qr" class="hidden flex flex-col items-center bg-white p-4 rounded-xl mt-4">
+                <div id="qrcode"></div>
+                <button onclick="cerrarModal()" class="mt-4 bg-purple-600 px-6 py-2 rounded-lg">Cerrar</button>
+            </div>
+            <div id="botones-accion" class="mt-6 flex gap-2">
                 <button id="btn-accion" class="flex-1 bg-emerald-500 p-3 rounded-xl font-bold">CONFIRMAR</button>
                 <button onclick="cerrarModal()" class="bg-purple-800 p-3 rounded-xl">CERRAR</button>
             </div>
@@ -33,72 +39,129 @@
     </div>
 
     <script>
-        // ... (Aquí iría tu configuración de Firebase) ...
-        
+        // CONFIGURACIÓN: Reemplaza con tus credenciales de Firebase
+        const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let insumosLocales = [];
+        const cats = [
+            {val: 'malta', label: 'Maltas'}, {val: 'lupulo', label: 'Lúpulos'}, 
+            {val: 'levadura', label: 'Levaduras'}, {val: 'laboratorio', label: 'Laboratorio'},
+            {val: 'clarificante', label: 'Clarificantes'}, {val: 'nutriente', label: 'Nutrientes'}
+        ];
+
+        db.collection("inventario").onSnapshot(snap => {
+            insumosLocales = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            renderLista();
+        });
+
         function renderLista() {
-            const container = document.getElementById('lista-insumos');
-            container.innerHTML = "";
+            const cont = document.getElementById('lista-insumos');
+            cont.innerHTML = "";
             insumosLocales.forEach(item => {
                 const dias = Math.floor((new Date() - new Date(item.fechaIngreso)) / 86400000);
                 const alerta = (item.stock <= item.stockMinimo || dias > item.diasMax);
-                
-                container.innerHTML += `
+                cont.innerHTML += `
                     <div class="p-4 rounded-xl border ${alerta ? 'border-amber-500 bg-amber-950/20' : 'border-purple-700'}">
-                        <h3 class="font-bold">${item.nombre}</h3>
-                        <p class="text-sm">Stock: ${item.stock} ${item.unidad} ${item.stock <= item.stockMinimo ? '⚠️' : ''}</p>
-                        <p class="text-xs">Permanencia: ${dias}/${item.diasMax} días</p>
+                        <h3 class="font-bold text-lg">${item.nombre}</h3>
+                        <p class="text-sm">Stock: ${item.stock} ${item.unidad}</p>
+                        <p class="text-xs ${alerta ? 'text-amber-400' : ''}">Perm: ${dias}/${item.diasMax} días</p>
                     </div>`;
             });
         }
 
         function abrirForm(tipo) {
             document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('seccion-qr').classList.add('hidden');
+            document.getElementById('botones-accion').classList.remove('hidden');
             const campos = document.getElementById('campos-form');
             campos.innerHTML = "";
             
             if(tipo === 'nuevo') {
                 document.getElementById('modal-titulo').textContent = "Nuevo Insumo";
                 campos.innerHTML = `
-                    <select id="ins-cat" class="w-full p-2 bg-purple-950 rounded-lg"><option value="malta">Malta</option><option value="lupulo">Lúpulo</option></select>
+                    <select id="ins-cat" class="w-full p-2 bg-purple-950 rounded-lg">${cats.map(c=>`<option value="${c.val}">${c.label}</option>`).join('')}</select>
                     <input type="text" id="ins-nom" placeholder="Nombre" class="w-full p-2 bg-purple-950 rounded-lg">
                     <input type="date" id="ins-fecha" class="w-full p-2 bg-purple-950 rounded-lg">
                     <input type="number" id="ins-stock" placeholder="Stock" class="w-full p-2 bg-purple-950 rounded-lg">
                     <input type="number" id="ins-min" placeholder="Stock Mínimo" class="w-full p-2 bg-purple-950 rounded-lg">
-                    <input type="text" id="ins-doc" placeholder="Factura/Boleta" class="w-full p-2 bg-purple-950 rounded-lg">
+                    <input type="text" id="ins-unidad" placeholder="Unidad (kg, gr, u)" class="w-full p-2 bg-purple-950 rounded-lg">
                     <input type="number" id="ins-dias" placeholder="Días Máx." class="w-full p-2 bg-purple-950 rounded-lg">
+                    <input type="text" id="ins-doc" placeholder="Factura/Boleta" class="w-full p-2 bg-purple-950 rounded-lg">
                 `;
                 document.getElementById('btn-accion').onclick = guardarInsumo;
             } else {
                 document.getElementById('modal-titulo').textContent = "Consumo Receta";
-                campos.innerHTML = `<button onclick="agregarFila()" class="w-full border border-dashed p-2 mb-2">+ Agregar Insumo</button>`;
+                campos.innerHTML = `<button onclick="agregarFila()" class="w-full border p-2 rounded-lg">+ Añadir Insumo</button>`;
                 document.getElementById('btn-accion').onclick = procesarConsumoMasivo;
             }
         }
 
         function agregarFila() {
             const div = document.createElement('div');
-            div.className = "flex gap-2 mb-2";
+            div.className = "p-3 border border-purple-700 rounded-lg bg-purple-950/50 mb-3";
             div.innerHTML = `
-                <select class="sel-id p-2 bg-purple-950 flex-1">${insumosLocales.map(i => `<option value="${i.id}">${i.nombre}</option>`).join('')}</select>
-                <input type="number" class="sel-cant w-20 p-2 bg-purple-950" placeholder="Cant">
+                <select class="sel-cat p-2 w-full bg-purple-900 mb-2" onchange="filtrarNombres(this)">
+                    <option value="">Tipo...</option>${cats.map(c=>`<option value="${c.val}">${c.label}</option>`).join('')}
+                </select>
+                <select class="sel-id p-2 w-full bg-purple-900 mb-2"><option value="">Nombre...</option></select>
+                <input type="number" class="sel-cant w-full p-2 bg-purple-900" placeholder="Cantidad">
             `;
             document.getElementById('lista-receta').appendChild(div);
         }
 
+        function filtrarNombres(el) {
+            const row = el.parentElement;
+            const select = row.querySelector('.sel-id');
+            select.innerHTML = insumosLocales.filter(i => i.categoria === el.value).map(i => `<option value="${i.id}">${i.nombre}</option>`).join('');
+        }
+
+        async function guardarInsumo() {
+            const cat = document.getElementById('ins-cat').value;
+            const codigo = `${cat.substring(0,4).toUpperCase()}-${Date.now().toString().slice(-3)}`;
+            const data = {
+                categoria: cat, nombre: document.getElementById('ins-nom').value,
+                fechaIngreso: document.getElementById('ins-fecha').value,
+                stock: Number(document.getElementById('ins-stock').value),
+                stockMinimo: Number(document.getElementById('ins-min').value),
+                unidad: document.getElementById('ins-unidad').value,
+                diasMax: Number(document.getElementById('ins-dias').value),
+                documento: document.getElementById('ins-doc').value
+            };
+            await db.collection("inventario").doc(codigo).set(data);
+            mostrarQR(codigo);
+        }
+
+        function mostrarQR(codigo) {
+            document.getElementById('botones-accion').classList.add('hidden');
+            document.getElementById('seccion-qr').classList.remove('hidden');
+            new QRCode(document.getElementById('qrcode'), { text: codigo, width: 128, height: 128 });
+        }
+
         async function procesarConsumoMasivo() {
-            const filas = document.querySelectorAll('#lista-receta > div');
             const batch = db.batch();
-            filas.forEach(f => {
-                const id = f.querySelector('.sel-id').value;
-                const cant = Number(f.querySelector('.sel-cant').value);
-                batch.update(db.collection("inventario").doc(id), { stock: firebase.firestore.FieldValue.increment(-cant) });
+            document.querySelectorAll('#lista-receta > div').forEach(f => {
+                batch.update(db.collection("inventario").doc(f.querySelector('.sel-id').value), { 
+                    stock: firebase.firestore.FieldValue.increment(-Number(f.querySelector('.sel-cant').value)) 
+                });
             });
             await batch.commit();
             cerrarModal();
-            renderLista();
         }
 
-        function cerrarModal() { document.getElementById('modal').classList.add('hidden'); document.getElementById('lista-receta').innerHTML = ""; }
+        function cerrarModal() { 
+            document.getElementById('modal').classList.add('hidden'); 
+            document.getElementById('lista-receta').innerHTML = ""; 
+        }
+
+        function generarReporte() {
+            let csv = "Nombre,Stock,Unidad,Minimo,DiasMax\n";
+            insumosLocales.forEach(i => csv += `${i.nombre},${i.stock},${i.unidad},${i.stockMinimo},${i.diasMax}\n`);
+            const a = document.createElement('a');
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            a.download = 'Reporte_Bodega.csv';
+            a.click();
+        }
     </script>
 </body>
 </html>
