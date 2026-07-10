@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma Bodega & Lab - Official v2.3</title>
+    <title>Chuyma Bodega & Lab - Official v2.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -113,21 +113,32 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Actual</label>
                                 <input type="number" step="any" id="insumo-stock" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Unidad</label>
+                                <select id="insumo-unidad" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold focus:outline-none focus:border-amber-500 text-center">
+                                    <option value="kg">kg</option>
+                                    <option value="g">g</option>
+                                    <option value="mL">mL</option>
+                                    <option value="litros">litros</option>
+                                    <option value="unidades">unidades</option>
+                                    <option value="ninguno">ninguno</option>
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Mínima</label>
                                 <input type="number" step="any" id="insumo-minimo" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote Trazabilidad</label>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote Trazab.</label>
                                 <input type="text" id="insumo-lote" placeholder="S/L" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Boleta / Factura</label>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Bol. / Factura</label>
                                 <input type="text" id="insumo-documento" placeholder="N° Doc" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
                             </div>
                         </div>
@@ -277,10 +288,14 @@
             datos.forEach(function(item) {
                 var esCritico = item.minimo && Number(item.stock) <= Number(item.minimo);
                 
-                var unidad = "unidades";
-                if(item.categoria === 'malta') unidad = "kg";
-                else if(item.categoria === 'lupulo' || item.categoria === 'clarificante') unidad = "g";
-                else if(item.categoria === 'empaque' && item.tipo === 'CO2') unidad = "kg";
+                // Priorizar unidad guardada en BD, si no existe caer en fallback histórico
+                var unidad = item.unidadMedida;
+                if (!unidad || unidad === 'ninguno') {
+                    unidad = "unidades";
+                    if(item.categoria === 'malta') unidad = "kg";
+                    else if(item.categoria === 'lupulo' || item.categoria === 'clarificante') unidad = "g";
+                    else if(item.categoria === 'empaque' && item.tipo === 'CO2') unidad = "kg";
+                }
 
                 var card = document.createElement('div');
                 card.className = `bg-gray-900 p-5 rounded-2xl border transition shadow-lg flex flex-col justify-between h-48 ${esCritico ? 'border-red-600/60 shadow-red-950/10' : 'border-gray-850 hover:border-gray-800'}`;
@@ -410,12 +425,13 @@
             if(!item) { alert("Insumo no encontrado."); return; }
             
             formError.classList.add('hidden');
-            btnEliminar.classList.remove('hidden'); // Mostramos borrar ya que el elemento existe
+            btnEliminar.classList.remove('hidden');
             
             document.getElementById('form-titulo').textContent = "Detalle e Historial del Insumo";
             document.getElementById('insumo-categoria').value = item.categoria;
             document.getElementById('insumo-nombre').value = item.nombre;
             document.getElementById('insumo-stock').value = item.stock;
+            document.getElementById('insumo-unidad').value = item.unidadMedida || 'kg';
             document.getElementById('insumo-minimo').value = item.minimo || "";
             document.getElementById('insumo-lote').value = item.lote || '';
             document.getElementById('insumo-documento').value = item.documentoCompra || '';
@@ -441,11 +457,12 @@
         document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
             idInsumoSeleccionado = null;
             formError.classList.add('hidden');
-            btnEliminar.classList.add('hidden'); // Escondemos borrar porque es un elemento nuevo
+            btnEliminar.classList.add('hidden');
             
             document.getElementById('form-titulo').textContent = "Registrar Nuevo Elemento";
             document.getElementById('insumo-nombre').value = "";
             document.getElementById('insumo-stock').value = "";
+            document.getElementById('insumo-unidad').value = "kg";
             document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
             document.getElementById('insumo-documento').value = "";
@@ -457,7 +474,6 @@
 
         document.getElementById('btn-cancelar').addEventListener('click', function() { formInsumo.classList.add('hidden'); });
 
-        // BOTÓN BORRAR CON DOBLE CONTROL DE TRAZABILIDAD
         btnEliminar.addEventListener('click', function() {
             if (!idInsumoSeleccionado) return;
             var conf1 = confirm("¿Estás segura de que quieres eliminar este insumo de la bodega?");
@@ -493,6 +509,7 @@
                 categoria: cat,
                 nombre: nombreVal,
                 stock: Number(document.getElementById('insumo-stock').value) || 0,
+                unidadMedida: document.getElementById('insumo-unidad').value,
                 minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
                 lote: document.getElementById('insumo-lote').value.trim() || 'S/L',
                 documentoCompra: document.getElementById('insumo-documento').value.trim() || ''
