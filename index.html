@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma Bodega & Lab - Official v2.1</title>
+    <title>Chuyma Bodega & Lab - Official v2.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -13,6 +13,7 @@
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans antialiased">
 
+    <!-- VISTA LOGIN -->
     <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen px-4">
         <div class="bg-gray-900 border border-amber-500/30 p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <h1 class="text-4xl font-black text-center text-amber-500 tracking-wider mb-1">CHUYMA</h1>
@@ -35,6 +36,7 @@
         </div>
     </div>
 
+    <!-- VISTA APP -->
     <div id="vista-app" class="hidden min-h-screen flex flex-col">
         <header class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-40">
             <div class="max-w-6xl w-full mx-auto flex justify-between items-center">
@@ -52,8 +54,9 @@
         </header>
 
         <main class="flex-1 p-4 max-w-6xl w-full mx-auto space-y-6">
+            <!-- ACCIONES SUPERIORES -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <input type="text" id="buscador" placeholder="🔍 Buscar por nombre o lote..." class="md:col-span-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white text-base focus:outline-none focus:border-amber-500 shadow-inner">
+                <input type="text" id="buscador" placeholder="🔍 Buscar por nombre, lote o factura..." class="md:col-span-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white text-base focus:outline-none focus:border-amber-500 shadow-inner">
                 <button id="btn-abrir-camara" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
                     📷 ESCANEAR QR EN PLANTA
                 </button>
@@ -62,6 +65,7 @@
                 </button>
             </div>
 
+            <!-- CONTENEDOR CÁMARA -->
             <div id="contenedor-camara" class="hidden bg-black p-4 rounded-2xl border border-amber-500 max-w-md mx-auto relative shadow-2xl">
                 <div id="lector-qr" class="w-full overflow-hidden rounded-xl"></div>
                 <button id="btn-cerrar-camara" class="w-full bg-red-600 hover:bg-red-700 text-white font-black p-3 rounded-xl mt-3 text-xs uppercase tracking-wider transition cursor-pointer">
@@ -69,6 +73,7 @@
                 </button>
             </div>
 
+            <!-- PESTAÑAS FILTRO -->
             <div class="flex gap-1 overflow-x-auto pb-2 border-b border-gray-800 no-scrollbar">
                 <button onclick="filtrarPorPestana('todas')" id="tab-todas" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-amber-500 text-gray-950 shadow">Todas</button>
                 <button onclick="filtrarPorPestana('malta')" id="tab-malta" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-gray-900 text-gray-400">Maltas</button>
@@ -77,11 +82,13 @@
                 <button onclick="filtrarPorPestana('laboratorio')" id="tab-laboratorio" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-gray-900 text-gray-400">Laboratorio</button>
                 <button onclick="filtrarPorPestana('levadura')" id="tab-levadura" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-gray-900 text-gray-400">Levaduras</button>
                 <button onclick="filtrarPorPestana('limpieza')" id="tab-limpieza" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-gray-900 text-gray-400">Limpieza</button>
-                <button onclick="filtrarPorPestana('empaque')" id="tab-empaque" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-gray-900 text-gray-400">Insumos Secos</button>
+                <button onclick="filtrarPorPestana('empaque')" id="tab-empaque" class="tab-btn px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap bg-gray-900 text-gray-400">Insumos Secos / Gas</button>
             </div>
 
+            <!-- CUADRÍCULA DE INSUMOS -->
             <div id="lista-insumos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
+            <!-- FORMULARIO / FICHA TÉCNICA -->
             <div id="form-insumo" class="hidden bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-6 shadow-2xl relative max-w-4xl mx-auto">
                 <h2 id="form-titulo" class="text-2xl font-black text-amber-500 border-b border-gray-800 pb-3 uppercase">Ficha Técnica</h2>
                 
@@ -97,7 +104,7 @@
                                     <option value="laboratorio">Laboratorio</option>
                                     <option value="levadura">Microbiología (Levaduras)</option>
                                     <option value="limpieza">Limpieza e Higiene</option>
-                                    <option value="empaque">Insumos Secos</option>
+                                    <option value="empaque">Insumos Secos y Gases</option>
                                 </select>
                             </div>
                             <div>
@@ -106,24 +113,29 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
-                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cantidad Actual</label>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Actual</label>
                                 <input type="number" step="any" id="insumo-stock" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cantidad Mínima</label>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Mínima</label>
                                 <input type="number" step="any" id="insumo-minimo" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote Trazabilidad</label>
                                 <input type="text" id="insumo-lote" placeholder="S/L" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
                             </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Boleta / Factura</label>
+                                <input type="text" id="insumo-documento" placeholder="N° Doc" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
+                            </div>
                         </div>
 
                         <div id="campos-dinamicos" class="bg-gray-950 p-4 rounded-xl border border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[60px] items-center"></div>
                     </div>
 
+                    <!-- SECCIÓN QR -->
                     <div class="bg-gray-950 p-4 rounded-2xl border border-gray-800 flex flex-col items-center justify-center text-center min-h-[220px]">
                         <span class="text-xs font-bold text-gray-500 uppercase mb-3">Trazabilidad QR Física</span>
                         <div id="qrcode-container" class="bg-white p-3 rounded-xl inline-block shadow-lg"></div>
@@ -133,9 +145,20 @@
                     </div>
                 </div>
 
-                <div class="flex gap-3 justify-end border-t border-gray-800 pt-4">
-                    <button id="btn-cancelar" class="bg-gray-750 text-gray-400 font-bold px-5 py-3 rounded-xl hover:bg-gray-700 transition cursor-pointer">Cancelar</button>
-                    <button id="btn-guardar" class="bg-amber-500 text-gray-950 font-black px-8 py-3 rounded-xl hover:bg-amber-600 transition uppercase text-sm cursor-pointer">Guardar Ficha</button>
+                <!-- CONTROLES DEL FORMULARIO -->
+                <div class="flex flex-col sm:flex-row gap-4 justify-between border-t border-gray-800 pt-4">
+                    <div>
+                        <button id="btn-eliminar" class="hidden bg-red-950/40 hover:bg-red-900/50 border border-red-800 text-red-400 font-bold px-5 py-3 rounded-xl transition cursor-pointer uppercase text-xs tracking-wider">
+                            🗑️ Eliminar Insumo
+                        </button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 justify-end items-center">
+                        <p id="form-error" class="text-red-400 text-sm font-semibold hidden"></p>
+                        <div class="flex gap-3 justify-end w-full sm:w-auto">
+                            <button id="btn-cancelar" class="bg-gray-750 text-gray-400 font-bold px-5 py-3 rounded-xl hover:bg-gray-700 transition cursor-pointer">Cancelar</button>
+                            <button id="btn-guardar" class="bg-amber-500 text-gray-950 font-black px-8 py-3 rounded-xl hover:bg-amber-600 transition uppercase text-sm cursor-pointer">Guardar Ficha</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -168,8 +191,9 @@
         var formInsumo = document.getElementById('form-insumo');
         var qrcodeContainer = document.getElementById('qrcode-container');
         var camposDinamicos = document.getElementById('campos-dinamicos');
+        var formError = document.getElementById('form-error');
+        var btnEliminar = document.getElementById('btn-eliminar');
 
-        // FLUJO DE AUTENTICACIÓN CONTROLADO Y REPARADO (.THEN ADICIONADO)
         document.getElementById('btn-login').addEventListener('click', function(e) {
             e.preventDefault();
             errorTxt.classList.add('hidden');
@@ -178,10 +202,7 @@
             if(!email || !pass) return;
             
             auth.signInWithEmailAndPassword(email, pass)
-                .then(function(userCredential) {
-                    // Éxito explícito: la sesión cambia y gatilla onAuthStateChanged automáticamente
-                    console.log("Autenticación exitosa");
-                })
+                .then(function() { console.log("Autenticación exitosa"); })
                 .catch(function(error) {
                     console.error("Error de login:", error);
                     errorTxt.textContent = "Clave o usuario incorrecto.";
@@ -194,14 +215,14 @@
         auth.onAuthStateChanged(function(user) {
             if (user) {
                 vistaLogin.classList.add('hidden');
-                vistaApp.setTimeout ? null : vistaApp.classList.remove('hidden');
+                vistaApp.classList.remove('hidden');
                 db.collection("inventario").onSnapshot(function(snapshot) {
                     insumosLocales = [];
                     snapshot.forEach(function(doc) {
                         insumosLocales.push(Object.assign({ id: doc.id }, doc.data()));
                     });
                     evaluarAlertasYRender();
-                });
+                }, function(error) { console.error("Error base datos:", error); });
             } else {
                 vistaLogin.classList.remove('hidden');
                 vistaApp.classList.add('hidden');
@@ -221,7 +242,9 @@
             var txt = buscador.value.toLowerCase();
             var filtrados = insumosLocales.filter(function(i) {
                 var matchesTab = (pestanaActual === 'todas' || i.categoria === pestanaActual);
-                var matchesTxt = i.nombre.toLowerCase().includes(txt) || (i.lote && i.lote.toLowerCase().includes(txt));
+                var matchesTxt = i.nombre.toLowerCase().includes(txt) || 
+                                 (i.lote && i.lote.toLowerCase().includes(txt)) ||
+                                 (i.documentoCompra && i.documentoCompra.toLowerCase().includes(txt));
                 return matchesTab && matchesTxt;
             });
             renderLista(filtrados);
@@ -278,7 +301,7 @@
                             </div>
                             <button onclick="cambiarStock('${item.id}', 1)" class="bg-gray-800 text-white w-11 h-11 rounded-xl font-black text-xl cursor-pointer">+</button>
                         </div>
-                        <button onclick="verFicha('${item.id}')" class="bg-amber-500 text-gray-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase cursor-pointer">Ver</button>
+                        <button onclick="verFicha('${item.id}')" class="bg-amber-500 text-gray-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase cursor-pointer">Ver / Editar</button>
                     </div>
                 `;
                 listaInsumos.appendChild(card);
@@ -287,7 +310,11 @@
 
         window.cambiarStock = function(id, cambio) {
             var item = insumosLocales.find(function(i) { return i.id === id; });
-            if(item) db.collection("inventario").doc(id).update({ stock: Math.max(0, Number(item.stock) + cambio) });
+            if(item) {
+                var nuevoStock = Math.max(0, Number(item.stock) + cambio);
+                db.collection("inventario").doc(id).update({ stock: nuevoStock })
+                .catch(function(err){ console.error("Error stock:", err); });
+            }
         };
 
         document.getElementById('insumo-categoria').addEventListener('change', function(e) { pintarCamposDinamicos(e.target.value); });
@@ -353,7 +380,7 @@
                 `;
             } else if (cat === 'empaque') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Seco</label>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Seco / Gas</label>
                         <select id="emp-tipo" onchange="toggleEmpaqueLabel(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
                             <option value="Botellas" ${datos.tipo === 'Botellas' ? 'selected' : ''}>Botellas</option>
                             <option value="Cajas" ${datos.tipo === 'Cajas' ? 'selected' : ''}>Cajas</option>
@@ -372,24 +399,26 @@
         window.toggleEmpaqueLabel = function(val) {
             var label = document.getElementById('label-seco-variable');
             if (!label) return;
-            if (val === 'Etiquetas') {
-                label.textContent = "Producto al que pertenece";
-            } else if (val === 'CO2') {
-                label.textContent = "Capacidad del Cilindro / Formato";
-            } else {
-                label.textContent = "Capacidad / Volumen";
-            }
+            if (val === 'Etiquetas') { label.textContent = "Producto al que pertenece"; } 
+            else if (val === 'CO2') { label.textContent = "Capacidad del Cilindro / Formato"; } 
+            else { label.textContent = "Capacidad / Volumen"; }
         };
 
         window.verFicha = function(id) {
             idInsumoSeleccionado = id;
             var item = insumosLocales.find(function(i) { return i.id === id; });
-            document.getElementById('form-titulo').textContent = "Detalle del Insumo";
+            if(!item) { alert("Insumo no encontrado."); return; }
+            
+            formError.classList.add('hidden');
+            btnEliminar.classList.remove('hidden'); // Mostramos borrar ya que el elemento existe
+            
+            document.getElementById('form-titulo').textContent = "Detalle e Historial del Insumo";
             document.getElementById('insumo-categoria').value = item.categoria;
             document.getElementById('insumo-nombre').value = item.nombre;
             document.getElementById('insumo-stock').value = item.stock;
             document.getElementById('insumo-minimo').value = item.minimo || "";
             document.getElementById('insumo-lote').value = item.lote || '';
+            document.getElementById('insumo-documento').value = item.documentoCompra || '';
             
             pintarCamposDinamicos(item.categoria, item);
             
@@ -411,12 +440,16 @@
 
         document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
             idInsumoSeleccionado = null;
+            formError.classList.add('hidden');
+            btnEliminar.classList.add('hidden'); // Escondemos borrar porque es un elemento nuevo
+            
             document.getElementById('form-titulo').textContent = "Registrar Nuevo Elemento";
             document.getElementById('insumo-nombre').value = "";
             document.getElementById('insumo-stock').value = "";
             document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
-            qrcodeContainer.innerHTML = "<p class='text-[10px] text-gray-650 p-4 font-bold uppercase'>Se creará al guardar</p>";
+            document.getElementById('insumo-documento').value = "";
+            qrcodeContainer.innerHTML = "<p class='text-[10px] text-gray-500 p-4 font-bold uppercase border border-dashed border-gray-800 rounded-xl'>Se creará al guardar</p>";
             pintarCamposDinamicos('malta');
             formInsumo.classList.remove('hidden');
             formInsumo.scrollIntoView({ behavior: 'smooth' });
@@ -424,16 +457,46 @@
 
         document.getElementById('btn-cancelar').addEventListener('click', function() { formInsumo.classList.add('hidden'); });
 
+        // BOTÓN BORRAR CON DOBLE CONTROL DE TRAZABILIDAD
+        btnEliminar.addEventListener('click', function() {
+            if (!idInsumoSeleccionado) return;
+            var conf1 = confirm("¿Estás segura de que quieres eliminar este insumo de la bodega?");
+            if (conf1) {
+                var conf2 = confirm("¡Cuidado Cony! Esta acción purgará el registro permanentemente de Firebase. ¿Confirmas la purga?");
+                if (conf2) {
+                    db.collection("inventario").doc(idInsumoSeleccionado).delete()
+                    .then(function() {
+                        formInsumo.classList.add('hidden');
+                        idInsumoSeleccionado = null;
+                    })
+                    .catch(function(err) {
+                        console.error(err);
+                        formError.textContent = "Error al intentar purgar el insumo.";
+                        formError.classList.remove('hidden');
+                    });
+                }
+            }
+        });
+
         document.getElementById('btn-guardar').addEventListener('click', function() {
+            formError.classList.add('hidden');
             var cat = document.getElementById('insumo-categoria').value;
+            var nombreVal = document.getElementById('insumo-nombre').value.trim();
+            
+            if (!nombreVal) {
+                formError.textContent = "El nombre es obligatorio.";
+                formError.classList.remove('hidden');
+                return;
+            }
+
             var payload = {
                 categoria: cat,
-                nombre: document.getElementById('insumo-nombre').value.trim(),
-                stock: Number(document.getElementById('insumo-stock').value),
+                nombre: nombreVal,
+                stock: Number(document.getElementById('insumo-stock').value) || 0,
                 minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
-                lote: document.getElementById('insumo-lote').value.trim(),
+                lote: document.getElementById('insumo-lote').value.trim() || 'S/L',
+                documentoCompra: document.getElementById('insumo-documento').value.trim() || ''
             };
-            if (!payload.nombre) return;
 
             if(cat === 'malta') {
                 payload.origen = document.getElementById('m-origen')?.value || '';
@@ -457,17 +520,34 @@
                 payload.variable = document.getElementById('emp-variable')?.value || '';
             }
 
-            if (idInsumoSeleccionado) db.collection("inventario").doc(idInsumoSeleccionado).update(payload);
-            else db.collection("inventario").add(payload);
-            
-            formInsumo.classList.add('hidden');
+            if (idInsumoSeleccionado) {
+                db.collection("inventario").doc(idInsumoSeleccionado).update(payload)
+                .then(function() {
+                    formInsumo.classList.add('hidden');
+                    idInsumoSeleccionado = null;
+                })
+                .catch(function(error) {
+                    formError.textContent = "Error de red al actualizar.";
+                    formError.classList.remove('hidden');
+                });
+            } else {
+                db.collection("inventario").add(payload)
+                .then(function() {
+                    formInsumo.classList.add('hidden');
+                    idInsumoSeleccionado = null;
+                })
+                .catch(function(error) {
+                    formError.textContent = "Error al guardar el nuevo insumo.";
+                    formError.classList.remove('hidden');
+                });
+            }
         });
 
         document.getElementById('btn-imprimir-qr').addEventListener('click', function() {
             var nombre = document.getElementById('insumo-nombre').value || "Insumo Chuyma";
             var lote = document.getElementById('insumo-lote').value || "S/L";
             var win = window.open('', '_blank', 'width=400,height=400');
-            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Lote: '+lote+'</p><div>'+qrcodeContainer.innerHTML+'</div><script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Lote: '+lote+'</p><div style="display:flex;justify-content:center;margin-top:15px;">'+qrcodeContainer.innerHTML+'</div><script>window.onload=function(){window.print();setTimeout(function(){window.close();},300);}<\/script></body></html>');
             win.document.close();
         });
 
@@ -478,15 +558,15 @@
                 function(idScaneado) {
                     qrScanner.stop().then(function() {
                         document.getElementById('contenedor-camara').classList.add('hidden');
-                        verFicha(idScaneado);
+                        verFicha(idScaneado.trim());
                     });
                 }, function() {}
             ).catch(function() { document.getElementById('contenedor-camara').classList.add('hidden'); });
         });
 
         document.getElementById('btn-cerrar-camara').addEventListener('click', function() {
-            if (qrScanner) qrScanner.stop().then(function() { document.getElementById('contenedor-camara').classList.add('hidden'); });
-            else document.getElementById('contenedor-camara').classList.add('hidden');
+            if (qrScanner) { qrScanner.stop().then(function() { document.getElementById('contenedor-camara').classList.add('hidden'); }); } 
+            else { document.getElementById('contenedor-camara').classList.add('hidden'); }
         });
     </script>
 </body>
