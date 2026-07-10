@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma Bodega & Lab - Official v2.4</title>
+    <title>Chuyma Bodega & Lab - Official v2.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -55,13 +55,16 @@
 
         <main class="flex-1 p-4 max-w-6xl w-full mx-auto space-y-6">
             <!-- ACCIONES SUPERIORES -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <input type="text" id="buscador" placeholder="🔍 Buscar por nombre, lote o factura..." class="md:col-span-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white text-base focus:outline-none focus:border-amber-500 shadow-inner">
                 <button id="btn-abrir-camara" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
-                    📷 ESCANEAR QR EN PLANTA
+                    📷 ESCANEAR QR
                 </button>
                 <button id="btn-nuevo-insumo" class="bg-gray-900 hover:bg-gray-850 text-amber-500 border border-amber-500/20 font-bold p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
-                    📦 INGRESAR NUEVO ELEMENTO
+                    📦 NUEVO INSUMO
+                </button>
+                <button id="btn-registrar-uso" class="bg-blue-900/30 hover:bg-blue-800/40 text-blue-400 border border-blue-500/30 font-bold p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
+                    🧪 REGISTRAR USO
                 </button>
             </div>
 
@@ -88,6 +91,36 @@
             <!-- CUADRÍCULA DE INSUMOS -->
             <div id="lista-insumos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
+            <!-- FORMULARIO REGISTRO DE USO (NUEVO) -->
+            <div id="form-uso" class="hidden bg-gray-900 p-6 rounded-2xl border border-blue-800 space-y-6 shadow-2xl relative max-w-2xl mx-auto">
+                <h2 class="text-2xl font-black text-blue-400 border-b border-gray-800 pb-3 uppercase">Registrar Consumo / Despacho</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Seleccionar Insumo Existente</label>
+                        <select id="uso-insumo-id" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-semibold focus:outline-none focus:border-blue-500">
+                            <!-- Se llena dinámicamente -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cantidad a Utilizar</label>
+                        <input type="number" step="any" id="uso-cantidad" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Fecha de Consumo</label>
+                        <input type="date" id="uso-fecha" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote en Brewfather / Notas</label>
+                        <input type="text" id="uso-lote-brewfather" placeholder="Ej: Batch #045 - Pale Ale" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="flex gap-3 justify-end border-t border-gray-800 pt-4">
+                    <button id="btn-cancelar-uso" class="bg-gray-750 text-gray-400 font-bold px-5 py-3 rounded-xl hover:bg-gray-700 transition cursor-pointer">Cancelar</button>
+                    <button id="btn-guardar-uso" class="bg-blue-600 text-white font-black px-8 py-3 rounded-xl hover:bg-blue-700 transition uppercase text-sm cursor-pointer">Registrar en Bitácora</button>
+                </div>
+                <p id="uso-error" class="text-red-400 text-sm font-semibold hidden"></p>
+            </div>
+
             <!-- FORMULARIO / FICHA TÉCNICA -->
             <div id="form-insumo" class="hidden bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-6 shadow-2xl relative max-w-4xl mx-auto">
                 <h2 id="form-titulo" class="text-2xl font-black text-amber-500 border-b border-gray-800 pb-3 uppercase">Ficha Técnica</h2>
@@ -113,6 +146,7 @@
                             </div>
                         </div>
 
+                        <!-- FILA STOCK Y UNIDADES -->
                         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Actual</label>
@@ -133,13 +167,25 @@
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Mínima</label>
                                 <input type="number" step="any" id="insumo-minimo" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
                             </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Bol. / Factura</label>
+                                <input type="text" id="insumo-documento" placeholder="N° Doc" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+
+                        <!-- NUEVA FILA: FECHAS Y CADUCIDAD -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote Trazab.</label>
                                 <input type="text" id="insumo-lote" placeholder="S/L" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Bol. / Factura</label>
-                                <input type="text" id="insumo-documento" placeholder="N° Doc" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Fecha de Ingreso</label>
+                                <input type="date" id="insumo-fecha-ingreso" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 text-center">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Días Críticos (V. Útil)</label>
+                                <input type="number" id="insumo-dias-criticos" placeholder="Ej: 180" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
                             </div>
                         </div>
 
@@ -200,6 +246,7 @@
         var buscador = document.getElementById('buscador');
         var listaInsumos = document.getElementById('lista-insumos');
         var formInsumo = document.getElementById('form-insumo');
+        var formUso = document.getElementById('form-uso');
         var qrcodeContainer = document.getElementById('qrcode-container');
         var camposDinamicos = document.getElementById('campos-dinamicos');
         var formError = document.getElementById('form-error');
@@ -287,14 +334,19 @@
             }
             datos.forEach(function(item) {
                 var esCritico = item.minimo && Number(item.stock) <= Number(item.minimo);
-                
-                // Priorizar unidad guardada en BD, si no existe caer en fallback histórico
-                var unidad = item.unidadMedida;
-                if (!unidad || unidad === 'ninguno') {
-                    unidad = "unidades";
-                    if(item.categoria === 'malta') unidad = "kg";
-                    else if(item.categoria === 'lupulo' || item.categoria === 'clarificante') unidad = "g";
-                    else if(item.categoria === 'empaque' && item.tipo === 'CO2') unidad = "kg";
+                var unidad = item.unidadMedida || 'unidades';
+
+                // Cálculo de días en bodega
+                var diasTexto = "";
+                if (item.fechaIngreso) {
+                    var fIngreso = new Date(item.fechaIngreso);
+                    var fHoy = new Date();
+                    var diffDias = Math.floor((fHoy - fIngreso) / (1000 * 60 * 60 * 24));
+                    diasTexto = `<span class="text-[10px] text-gray-400 ml-2">(${diffDias} días en bodega)</span>`;
+                    
+                    if (item.diasCriticos && diffDias > Number(item.diasCriticos)) {
+                        diasTexto = `<span class="text-[10px] text-red-400 font-bold ml-2">¡EXCEDIÓ DÍAS CRÍTICOS!</span>`;
+                    }
                 }
 
                 var card = document.createElement('div');
@@ -305,7 +357,7 @@
                             <h3 class="font-black text-white text-lg truncate w-full">${item.nombre}</h3>
                             <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-gray-850 text-amber-500">${item.categoria}</span>
                         </div>
-                        <p class="text-xs font-bold text-gray-500 mt-1">Lote: <span class="text-gray-300">${item.lote || 'S/L'}</span></p>
+                        <p class="text-xs font-bold text-gray-500 mt-1">Lote: <span class="text-gray-300">${item.lote || 'S/L'}</span> ${diasTexto}</p>
                     </div>
                     <div class="flex items-center justify-between border-t border-gray-850 pt-3">
                         <div class="flex items-center gap-1.5">
@@ -332,6 +384,66 @@
             }
         };
 
+        // LÓGICA DE REGISTRO DE USO (BREWFATHER)
+        document.getElementById('btn-registrar-uso').addEventListener('click', function() {
+            formInsumo.classList.add('hidden');
+            formUso.classList.remove('hidden');
+            
+            var selectInsumo = document.getElementById('uso-insumo-id');
+            selectInsumo.innerHTML = '<option value="">-- Selecciona un insumo --</option>';
+            insumosLocales.forEach(function(i) {
+                selectInsumo.innerHTML += `<option value="${i.id}">${i.nombre} (Lote: ${i.lote || 'S/L'}) - Disp: ${i.stock} ${i.unidadMedida || ''}</option>`;
+            });
+            
+            document.getElementById('uso-fecha').value = new Date().toISOString().split('T')[0];
+            document.getElementById('uso-cantidad').value = "";
+            document.getElementById('uso-lote-brewfather').value = "";
+            document.getElementById('uso-error').classList.add('hidden');
+        });
+
+        document.getElementById('btn-cancelar-uso').addEventListener('click', function() {
+            formUso.classList.add('hidden');
+        });
+
+        document.getElementById('btn-guardar-uso').addEventListener('click', function() {
+            var id = document.getElementById('uso-insumo-id').value;
+            var cant = Number(document.getElementById('uso-cantidad').value);
+            var fecha = document.getElementById('uso-fecha').value;
+            var brewfather = document.getElementById('uso-lote-brewfather').value.trim();
+            var err = document.getElementById('uso-error');
+
+            if (!id || !cant || cant <= 0 || !fecha) {
+                err.textContent = "Completa el insumo, fecha y una cantidad válida mayor a 0.";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            var item = insumosLocales.find(function(i) { return i.id === id; });
+            if (!item) return;
+
+            var nuevoStock = Math.max(0, Number(item.stock) - cant);
+
+            // 1. Guardar en bitácora de consumos
+            db.collection("consumos").add({
+                idInsumo: id,
+                nombreInsumo: item.nombre,
+                loteInsumo: item.lote || 'S/L',
+                cantidadUsada: cant,
+                unidadMedida: item.unidadMedida || 'unidades',
+                fechaConsumo: fecha,
+                loteBrewfather: brewfather
+            }).then(function() {
+                // 2. Actualizar stock en el inventario principal
+                return db.collection("inventario").doc(id).update({ stock: nuevoStock });
+            }).then(function() {
+                formUso.classList.add('hidden');
+            }).catch(function(error) {
+                err.textContent = "Error al registrar el uso. Revisa conexión.";
+                err.classList.remove('hidden');
+            });
+        });
+
+        // LÓGICA DE CAMPOS DINÁMICOS Y FICHA TÉCNICA (Se mantiene intacto)
         document.getElementById('insumo-categoria').addEventListener('change', function(e) { pintarCamposDinamicos(e.target.value); });
 
         function pintarCamposDinamicos(cat, datos) {
@@ -424,6 +536,7 @@
             var item = insumosLocales.find(function(i) { return i.id === id; });
             if(!item) { alert("Insumo no encontrado."); return; }
             
+            formUso.classList.add('hidden');
             formError.classList.add('hidden');
             btnEliminar.classList.remove('hidden');
             
@@ -435,6 +548,8 @@
             document.getElementById('insumo-minimo').value = item.minimo || "";
             document.getElementById('insumo-lote').value = item.lote || '';
             document.getElementById('insumo-documento').value = item.documentoCompra || '';
+            document.getElementById('insumo-fecha-ingreso').value = item.fechaIngreso || '';
+            document.getElementById('insumo-dias-criticos').value = item.diasCriticos || '';
             
             pintarCamposDinamicos(item.categoria, item);
             
@@ -456,6 +571,7 @@
 
         document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
             idInsumoSeleccionado = null;
+            formUso.classList.add('hidden');
             formError.classList.add('hidden');
             btnEliminar.classList.add('hidden');
             
@@ -466,6 +582,11 @@
             document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
             document.getElementById('insumo-documento').value = "";
+            
+            // Auto-rellenar fecha de hoy al ingresar algo nuevo
+            document.getElementById('insumo-fecha-ingreso').value = new Date().toISOString().split('T')[0];
+            document.getElementById('insumo-dias-criticos').value = "";
+
             qrcodeContainer.innerHTML = "<p class='text-[10px] text-gray-500 p-4 font-bold uppercase border border-dashed border-gray-800 rounded-xl'>Se creará al guardar</p>";
             pintarCamposDinamicos('malta');
             formInsumo.classList.remove('hidden');
@@ -486,7 +607,6 @@
                         idInsumoSeleccionado = null;
                     })
                     .catch(function(err) {
-                        console.error(err);
                         formError.textContent = "Error al intentar purgar el insumo.";
                         formError.classList.remove('hidden');
                     });
@@ -512,7 +632,9 @@
                 unidadMedida: document.getElementById('insumo-unidad').value,
                 minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
                 lote: document.getElementById('insumo-lote').value.trim() || 'S/L',
-                documentoCompra: document.getElementById('insumo-documento').value.trim() || ''
+                documentoCompra: document.getElementById('insumo-documento').value.trim() || '',
+                fechaIngreso: document.getElementById('insumo-fecha-ingreso').value || '',
+                diasCriticos: document.getElementById('insumo-dias-criticos').value ? Number(document.getElementById('insumo-dias-criticos').value) : 0
             };
 
             if(cat === 'malta') {
