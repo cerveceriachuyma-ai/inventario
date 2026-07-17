@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma Bodega & Lab - Official v2.9</title>
+    <title>Chuyma Bodega & Lab - Official v2.10</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -173,6 +173,12 @@
                             </div>
                         </div>
 
+                        <!-- FILA NUEVA: PROVEEDOR GENERAL -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Proveedor / Distribuidor</label>
+                            <input type="text" id="insumo-proveedor" placeholder="Ej: Hopsteiner, Weyermann, Merck, etc." class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
+                        </div>
+
                         <!-- FILA: FECHAS Y CADUCIDAD -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
@@ -309,6 +315,7 @@
                 var matchesTxt = i.nombre.toLowerCase().includes(txt) || 
                                  (i.lote && i.lote.toLowerCase().includes(txt)) ||
                                  (i.codigoUnico && i.codigoUnico.toLowerCase().includes(txt)) ||
+                                 (i.proveedor && i.proveedor.toLowerCase().includes(txt)) ||
                                  (i.documentoCompra && i.documentoCompra.toLowerCase().includes(txt));
                 return matchesTab && matchesTxt;
             });
@@ -351,7 +358,7 @@
                     diasTexto = `<span class="text-[10px] text-gray-400 ml-2">(${diffDias} días en bodega)</span>`;
                     
                     if (item.diasCriticos && diffDias > Number(item.diasCriticos)) {
-                        diasTexto = `<span class="text-[10px] text-red-400 font-bold ml-2">¡EXCEDIÓ DÍAS CRÍTICOS!</span>`;
+                        diasTexto = `<span class="text-[10px] text-red-400 font-bold ml-2">¡EXCEDIÓ DÍAS CRÍCOS!</span>`;
                     }
                 }
 
@@ -456,7 +463,7 @@
             
             if (cat === 'malta') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Origen / Proveedor</label><input type="text" id="m-origen" value="${datos.origen || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Origen</label><input type="text" id="m-origen" value="${datos.origen || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
                     <div><label class="text-[10px] font-bold text-gray-400 uppercase">Color (EBC / Lovibond)</label><input type="text" id="m-color" value="${datos.color || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
                 `;
             } else if (cat === 'lupulo') {
@@ -495,7 +502,7 @@
                 `;
             } else if (cat === 'levadura') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Laboratorio / Proveedor</label><input type="text" id="lev-lab" value="${datos.laboratorio || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Laboratorio de Cepa</label><input type="text" id="lev-lab" value="${datos.laboratorio || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
                     <div><label class="text-[10px] font-bold text-gray-400 uppercase">Formato Cepa</label><select id="lev-formato" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
                         <option value="Seca" ${datos.formato === 'Seca' ? 'selected' : ''}>Seca (Dry)</option>
                         <option value="Líquida" ${datos.formato === 'Líquida' ? 'selected' : ''}>Líquida (Liquid)</option>
@@ -553,6 +560,7 @@
             document.getElementById('insumo-minimo').value = item.minimo || "";
             document.getElementById('insumo-lote').value = item.lote || '';
             document.getElementById('insumo-documento').value = item.documentoCompra || '';
+            document.getElementById('insumo-proveedor').value = item.proveedor || '';
             document.getElementById('insumo-fecha-ingreso').value = item.fechaIngreso || '';
             document.getElementById('insumo-dias-criticos').value = item.diasCriticos || '';
             document.getElementById('insumo-codigo-unico').value = item.codigoUnico || 'No asignado';
@@ -588,6 +596,7 @@
             document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
             document.getElementById('insumo-documento').value = "";
+            document.getElementById('insumo-proveedor').value = "";
             document.getElementById('insumo-codigo-unico').value = "";
             
             document.getElementById('insumo-fecha-ingreso').value = new Date().toISOString().split('T')[0];
@@ -647,6 +656,7 @@
                 minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
                 lote: document.getElementById('insumo-lote').value.trim() || 'S/L',
                 documentoCompra: document.getElementById('insumo-documento').value.trim() || '',
+                proveedor: document.getElementById('insumo-proveedor').value.trim() || '',
                 fechaIngreso: document.getElementById('insumo-fecha-ingreso').value || '',
                 diasCriticos: document.getElementById('insumo-dias-criticos').value ? Number(document.getElementById('insumo-dias-criticos').value) : 0
             };
@@ -688,7 +698,6 @@
                 var nuevaRef = db.collection("inventario").doc();
                 
                 var prefijo = limpiarNombreParaPrefijo(nombreVal);
-                // CAMBIO AQUÍ: Generamos un número aleatorio estricto de 5 dígitos (entre 10000 y 99999)
                 var numeroAleatorio = Math.floor(10000 + Math.random() * 90000);
                 var codigoFinal = prefijo + "-" + numeroAleatorio;
                 
