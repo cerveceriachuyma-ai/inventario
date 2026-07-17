@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma Bodega & Lab - Official v2.5</title>
+    <title>Chuyma Bodega & Lab - Official v2.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -56,7 +56,7 @@
         <main class="flex-1 p-4 max-w-6xl w-full mx-auto space-y-6">
             <!-- ACCIONES SUPERIORES -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" id="buscador" placeholder="🔍 Buscar por nombre, lote o factura..." class="md:col-span-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white text-base focus:outline-none focus:border-amber-500 shadow-inner">
+                <input type="text" id="buscador" placeholder="🔍 Buscar por nombre, lote o código único..." class="md:col-span-1 w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white text-base focus:outline-none focus:border-amber-500 shadow-inner">
                 <button id="btn-abrir-camara" class="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wider transition cursor-pointer">
                     📷 ESCANEAR QR
                 </button>
@@ -91,7 +91,7 @@
             <!-- CUADRÍCULA DE INSUMOS -->
             <div id="lista-insumos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
-            <!-- FORMULARIO REGISTRO DE USO (NUEVO) -->
+            <!-- FORMULARIO REGISTRO DE USO -->
             <div id="form-uso" class="hidden bg-gray-900 p-6 rounded-2xl border border-blue-800 space-y-6 shadow-2xl relative max-w-2xl mx-auto">
                 <h2 class="text-2xl font-black text-blue-400 border-b border-gray-800 pb-3 uppercase">Registrar Consumo / Despacho</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -173,7 +173,7 @@
                             </div>
                         </div>
 
-                        <!-- NUEVA FILA: FECHAS Y CADUCIDAD -->
+                        <!-- FILA: FECHAS Y CADUCIDAD -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote Trazab.</label>
@@ -187,6 +187,12 @@
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Días Críticos (V. Útil)</label>
                                 <input type="number" id="insumo-dias-criticos" placeholder="Ej: 180" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
                             </div>
+                        </div>
+
+                        <!-- NUEVA FILA PARA EL CÓDIGO INTERNO GENERADO -->
+                        <div class="bg-gray-850 p-3 rounded-xl border border-gray-700">
+                            <label class="block text-xs font-bold uppercase text-amber-500 mb-0.5">Código Único de Trazabilidad App</label>
+                            <input type="text" id="insumo-codigo-unico" readonly placeholder="Se generará automáticamente" class="w-full bg-transparent text-sm text-gray-300 font-mono font-bold focus:outline-none">
                         </div>
 
                         <div id="campos-dinamicos" class="bg-gray-950 p-4 rounded-xl border border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[60px] items-center"></div>
@@ -302,6 +308,7 @@
                 var matchesTab = (pestanaActual === 'todas' || i.categoria === pestanaActual);
                 var matchesTxt = i.nombre.toLowerCase().includes(txt) || 
                                  (i.lote && i.lote.toLowerCase().includes(txt)) ||
+                                 (i.codigoUnico && i.codigoUnico.toLowerCase().includes(txt)) ||
                                  (i.documentoCompra && i.documentoCompra.toLowerCase().includes(txt));
                 return matchesTab && matchesTxt;
             });
@@ -336,7 +343,6 @@
                 var esCritico = item.minimo && Number(item.stock) <= Number(item.minimo);
                 var unidad = item.unidadMedida || 'unidades';
 
-                // Cálculo de días en bodega
                 var diasTexto = "";
                 if (item.fechaIngreso) {
                     var fIngreso = new Date(item.fechaIngreso);
@@ -357,7 +363,8 @@
                             <h3 class="font-black text-white text-lg truncate w-full">${item.nombre}</h3>
                             <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-gray-850 text-amber-500">${item.categoria}</span>
                         </div>
-                        <p class="text-xs font-bold text-gray-500 mt-1">Lote: <span class="text-gray-300">${item.lote || 'S/L'}</span> ${diasTexto}</p>
+                        <p class="text-xs font-bold text-gray-500 mt-0.5">Código: <span class="text-amber-500 font-mono">${item.codigoUnico || 'S/C'}</span></p>
+                        <p class="text-[11px] text-gray-400">Lote: <span class="text-gray-300">${item.lote || 'S/L'}</span> ${diasTexto}</p>
                     </div>
                     <div class="flex items-center justify-between border-t border-gray-850 pt-3">
                         <div class="flex items-center gap-1.5">
@@ -384,7 +391,6 @@
             }
         };
 
-        // LÓGICA DE REGISTRO DE USO (BREWFATHER)
         document.getElementById('btn-registrar-uso').addEventListener('click', function() {
             formInsumo.classList.add('hidden');
             formUso.classList.remove('hidden');
@@ -392,7 +398,7 @@
             var selectInsumo = document.getElementById('uso-insumo-id');
             selectInsumo.innerHTML = '<option value="">-- Selecciona un insumo --</option>';
             insumosLocales.forEach(function(i) {
-                selectInsumo.innerHTML += `<option value="${i.id}">${i.nombre} (Lote: ${i.lote || 'S/L'}) - Disp: ${i.stock} ${i.unidadMedida || ''}</option>`;
+                selectInsumo.innerHTML += `<option value="${i.id}">${i.nombre} (${i.codigoUnico || 'S/C'}) - Disp: ${i.stock} ${i.unidadMedida || ''}</option>`;
             });
             
             document.getElementById('uso-fecha').value = new Date().toISOString().split('T')[0];
@@ -423,17 +429,16 @@
 
             var nuevoStock = Math.max(0, Number(item.stock) - cant);
 
-            // 1. Guardar en bitácora de consumos
             db.collection("consumos").add({
                 idInsumo: id,
                 nombreInsumo: item.nombre,
                 loteInsumo: item.lote || 'S/L',
+                codigoUnicoInsumo: item.codigoUnico || 'S/C',
                 cantidadUsada: cant,
                 unidadMedida: item.unidadMedida || 'unidades',
                 fechaConsumo: fecha,
                 loteBrewfather: brewfather
             }).then(function() {
-                // 2. Actualizar stock en el inventario principal
                 return db.collection("inventario").doc(id).update({ stock: nuevoStock });
             }).then(function() {
                 formUso.classList.add('hidden');
@@ -443,7 +448,6 @@
             });
         });
 
-        // LÓGICA DE CAMPOS DINÁMICOS Y FICHA TÉCNICA (Se mantiene intacto)
         document.getElementById('insumo-categoria').addEventListener('change', function(e) { pintarCamposDinamicos(e.target.value); });
 
         function pintarCamposDinamicos(cat, datos) {
@@ -479,14 +483,15 @@
                 `;
             } else if (cat === 'laboratorio') {
                 camposDinamicos.innerHTML = `
-                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Insumo</label><select id="lab-sub" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    <div class="sm:col-span-2"><label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Insumo / Solución</label><select id="lab-sub" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
                         <option value="Insumo" ${datos.sub === 'Insumo' ? 'selected' : ''}>Insumo</option>
                         <option value="Reactivo" ${datos.sub === 'Reactivo' ? 'selected' : ''}>Reactivo</option>
                         <option value="Solución Preparada" ${datos.sub === 'Solución Preparada' ? 'selected' : ''}>Solución Preparada</option>
                         <option value="Estándar" ${datos.sub === 'Estándar' ? 'selected' : ''}>Estándar</option>
                         <option value="Otro" ${datos.sub === 'Otro' ? 'selected' : ''}>Otro</option>
                     </select></div>
-                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Fecha Expiración / Preparación</label><input type="date" id="lab-fecha" value="${datos.fecha || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Fecha de Preparación</label><input type="date" id="lab-fecha-preparacion" value="${datos.fechaPreparacion || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
+                    <div><label class="text-[10px] font-bold text-gray-400 uppercase">Fecha de Expiración</label><input type="date" id="lab-fecha-expiracion" value="${datos.fechaExpiracion || ''}" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"></div>
                 `;
             } else if (cat === 'levadura') {
                 camposDinamicos.innerHTML = `
@@ -550,6 +555,7 @@
             document.getElementById('insumo-documento').value = item.documentoCompra || '';
             document.getElementById('insumo-fecha-ingreso').value = item.fechaIngreso || '';
             document.getElementById('insumo-dias-criticos').value = item.diasCriticos || '';
+            document.getElementById('insumo-codigo-unico').value = item.codigoUnico || 'No asignado';
             
             pintarCamposDinamicos(item.categoria, item);
             
@@ -564,7 +570,7 @@
             }
 
             qrcodeContainer.innerHTML = "";
-            new QRCode(qrcodeContainer, { text: id, width: 120, height: 120 });
+            new QRCode(qrcodeContainer, { text: item.codigoUnico || id, width: 120, height: 120 });
             formInsumo.classList.remove('hidden');
             formInsumo.scrollIntoView({ behavior: 'smooth' });
         };
@@ -582,8 +588,8 @@
             document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
             document.getElementById('insumo-documento').value = "";
+            document.getElementById('insumo-codigo-unico').value = "";
             
-            // Auto-rellenar fecha de hoy al ingresar algo nuevo
             document.getElementById('insumo-fecha-ingreso').value = new Date().toISOString().split('T')[0];
             document.getElementById('insumo-dias-criticos').value = "";
 
@@ -613,6 +619,14 @@
                 }
             }
         });
+
+        function limpiarNombreParaPrefijo(nombre) {
+            if (!nombre) return "INS";
+            var limpio = nombre.replace(/\s+/g, '');
+            limpio = limpio.replace(/[^a-zA-Z0-9]/g, '');
+            if (limpio.length <= 5) return limpio;
+            return limpio.substring(0, 5); 
+        }
 
         document.getElementById('btn-guardar').addEventListener('click', function() {
             formError.classList.add('hidden');
@@ -648,7 +662,8 @@
                 payload.formato = document.getElementById('c-formato')?.value || '';
             } else if(cat === 'laboratorio') {
                 payload.sub = document.getElementById('lab-sub')?.value || '';
-                payload.fecha = document.getElementById('lab-fecha')?.value || '';
+                payload.fechaPreparacion = document.getElementById('lab-fecha-preparacion')?.value || '';
+                payload.fechaExpiracion = document.getElementById('lab-fecha-expiracion')?.value || '';
             } else if(cat === 'levadura') {
                 payload.laboratorio = document.getElementById('lev-lab')?.value || '';
                 payload.formato = document.getElementById('lev-formato')?.value || '';
@@ -670,7 +685,16 @@
                     formError.classList.remove('hidden');
                 });
             } else {
-                db.collection("inventario").add(payload)
+                var nuevaRef = db.collection("inventario").doc();
+                var idGenerado = nuevaRef.id;
+                
+                var prefijo = limpiarNombreParaPrefijo(nombreVal);
+                var sufijoAleatorio = idGenerado.substring(idGenerado.length - 4);
+                var codigoFinal = prefijo + "-" + sufijoAleatorio;
+                
+                payload.codigoUnico = codigoFinal;
+
+                nuevaRef.set(payload)
                 .then(function() {
                     formInsumo.classList.add('hidden');
                     idInsumoSeleccionado = null;
@@ -685,8 +709,9 @@
         document.getElementById('btn-imprimir-qr').addEventListener('click', function() {
             var nombre = document.getElementById('insumo-nombre').value || "Insumo Chuyma";
             var lote = document.getElementById('insumo-lote').value || "S/L";
+            var codUnico = document.getElementById('insumo-codigo-unico').value || "";
             var win = window.open('', '_blank', 'width=400,height=400');
-            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Lote: '+lote+'</p><div style="display:flex;justify-content:center;margin-top:15px;">'+qrcodeContainer.innerHTML+'</div><script>window.onload=function(){window.print();setTimeout(function(){window.close();},300);}<\/script></body></html>');
+            win.document.write('<html><body style="text-align:center;font-family:sans-serif;padding:20px;"><h2>CHUYMA BODEGA</h2><p><b>'+nombre+'</b></p><p>Código App: <span style="font-family:monospace;color:#f59e0b;font-weight:bold;">'+codUnico+'</span></p><p>Lote Fábrica: '+lote+'</p><div style="display:flex;justify-content:center;margin-top:15px;">'+qrcodeContainer.innerHTML+'</div><script>window.onload=function(){window.print();setTimeout(function(){window.close();},300);}<\/script></body></html>');
             win.document.close();
         });
 
@@ -694,10 +719,20 @@
             document.getElementById('contenedor-camara').classList.remove('hidden');
             qrScanner = new Html5Qrcode("lector-qr");
             qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 },
-                function(idScaneado) {
+                function(textoScaneado) {
+                    var codigoQuery = textoScaneado.trim();
                     qrScanner.stop().then(function() {
                         document.getElementById('contenedor-camara').classList.add('hidden');
-                        verFicha(idScaneado.trim());
+                        
+                        var itemEncontrado = insumosLocales.find(function(i) { 
+                            return i.codigoUnico === codigoQuery || i.id === codigoQuery; 
+                        });
+                        
+                        if (itemEncontrado) {
+                            verFicha(itemEncontrado.id);
+                        } else {
+                            alert("Código QR detectado (" + codigoQuery + ") pero no coincide con ningún insumo activo en Chuyma.");
+                        }
                     });
                 }, function() {}
             ).catch(function() { document.getElementById('contenedor-camara').classList.add('hidden'); });
