@@ -146,7 +146,7 @@
                             </div>
                         </div>
 
-                        <!-- FILA STOCK Y UNIDADES -->
+                        <!-- FILA STOCK Y UNIDADES CON TIPO DOC / NUM DOC -->
                         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
                             <div>
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Actual</label>
@@ -167,13 +167,22 @@
                                 <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cant. Mínima</label>
                                 <input type="number" step="any" id="insumo-minimo" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold text-center focus:outline-none focus:border-amber-500">
                             </div>
-                            <div class="sm:col-span-2">
-                                <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Bol. / Factura</label>
-                                <input type="text" id="insumo-documento" placeholder="N° Doc" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
+                            <div class="sm:col-span-2 flex gap-2">
+                                <div class="w-1/2">
+                                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Tipo Doc.</label>
+                                    <select id="insumo-tipo-documento" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-bold focus:outline-none focus:border-amber-500 text-center">
+                                        <option value="Boleta">Boleta</option>
+                                        <option value="Factura">Factura</option>
+                                    </select>
+                                </div>
+                                <div class="w-1/2">
+                                    <label class="block text-xs font-bold uppercase text-gray-400 mb-1">N° Doc.</label>
+                                    <input type="text" id="insumo-documento" placeholder="N° Doc" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-center focus:outline-none focus:border-amber-500">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- FILA NUEVA: PROVEEDOR GENERAL -->
+                        <!-- FILA PROVEEDOR GENERAL -->
                         <div>
                             <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Proveedor / Distribuidor</label>
                             <input type="text" id="insumo-proveedor" placeholder="Ej: Hopsteiner, Weyermann, Merck, etc." class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
@@ -559,6 +568,7 @@
             document.getElementById('insumo-unidad').value = item.unidadMedida || 'kg';
             document.getElementById('insumo-minimo').value = item.minimo || "";
             document.getElementById('insumo-lote').value = item.lote || '';
+            document.getElementById('insumo-tipo-documento').value = item.tipoDocumento || 'Boleta';
             document.getElementById('insumo-documento').value = item.documentoCompra || '';
             document.getElementById('insumo-proveedor').value = item.proveedor || '';
             document.getElementById('insumo-fecha-ingreso').value = item.fechaIngreso || '';
@@ -595,6 +605,7 @@
             document.getElementById('insumo-unidad').value = "kg";
             document.getElementById('insumo-minimo').value = "";
             document.getElementById('insumo-lote').value = "";
+            document.getElementById('insumo-tipo-documento').value = "Boleta";
             document.getElementById('insumo-documento').value = "";
             document.getElementById('insumo-proveedor').value = "";
             document.getElementById('insumo-codigo-unico').value = "";
@@ -655,6 +666,7 @@
                 unidadMedida: document.getElementById('insumo-unidad').value,
                 minimo: document.getElementById('insumo-minimo').value ? Number(document.getElementById('insumo-minimo').value) : 0,
                 lote: document.getElementById('insumo-lote').value.trim() || 'S/L',
+                tipoDocumento: document.getElementById('insumo-tipo-documento').value,
                 documentoCompra: document.getElementById('insumo-documento').value.trim() || '',
                 proveedor: document.getElementById('insumo-proveedor').value.trim() || '',
                 fechaIngreso: document.getElementById('insumo-fecha-ingreso').value || '',
