@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chuyma Bodega & Lab - Official v3.0</title>
+    <title>Chuyma Bodega & Lab - Official v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -17,7 +17,7 @@
     <div id="vista-login" class="flex flex-col items-center justify-center min-h-screen px-4">
         <div class="bg-gray-900 border border-amber-500/30 p-8 rounded-2xl shadow-2xl w-full max-w-md">
             <h1 class="text-4xl font-black text-center text-amber-500 tracking-wider mb-1">CHUYMA</h1>
-            <p class="text-gray-400 text-center text-xs uppercase tracking-widest mb-8">Bodega & Control de Laboratorio v3.0</p>
+            <p class="text-gray-400 text-center text-xs uppercase tracking-widest mb-8">Bodega & Control de Laboratorio v3.1</p>
             
             <div class="space-y-4">
                 <div>
@@ -93,6 +93,36 @@
 
             <!-- CUADRÍCULA DE INSUMOS -->
             <div id="lista-insumos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+            <!-- FORMULARIO REGISTRO DE USO -->
+            <div id="form-uso" class="hidden bg-gray-900 p-6 rounded-2xl border border-blue-800 space-y-6 shadow-2xl relative max-w-2xl mx-auto">
+                <h2 class="text-2xl font-black text-blue-400 border-b border-gray-800 pb-3 uppercase">Registrar Consumo / Despacho</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Seleccionar Insumo Existente</label>
+                        <select id="uso-insumo-id" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white font-semibold focus:outline-none focus:border-blue-500">
+                            <!-- Carga Dinámica -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Cantidad a Utilizar</label>
+                        <input type="number" step="any" id="uso-cantidad" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Fecha de Consumo</label>
+                        <input type="date" id="uso-fecha" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-1">Lote en Brewfather / Notas</label>
+                        <input type="text" id="uso-lote-brewfather" placeholder="Ej: Batch #045 - Pale Ale" class="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="flex gap-3 justify-end border-t border-gray-800 pt-4">
+                    <button id="btn-cancelar-uso" class="bg-gray-750 text-gray-400 font-bold px-5 py-3 rounded-xl hover:bg-gray-700 transition cursor-pointer">Cancelar</button>
+                    <button id="btn-guardar-uso" class="bg-blue-600 text-white font-black px-8 py-3 rounded-xl hover:bg-blue-700 transition uppercase text-sm cursor-pointer">Registrar en Bitácora</button>
+                </div>
+                <p id="uso-error" class="text-red-400 text-sm font-semibold hidden"></p>
+            </div>
 
             <!-- FORMULARIO FICHA TÉCNICA -->
             <div id="form-insumo" class="hidden bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-6 shadow-2xl relative max-w-4xl mx-auto">
@@ -275,6 +305,7 @@
         var buscador = document.getElementById('buscador');
         var listaInsumos = document.getElementById('lista-insumos');
         var formInsumo = document.getElementById('form-insumo');
+        var formUso = document.getElementById('form-uso');
         var qrcodeContainer = document.getElementById('qrcode-container');
         var camposDinamicos = document.getElementById('campos-dinamicos');
         var formError = document.getElementById('form-error');
@@ -365,7 +396,7 @@
                 var esCriticoStock = item.minimo && Number(item.stock) <= Number(item.minimo);
                 var unidad = item.unidadMedida || 'unidades';
 
-                // 1. CÁLCULO DÍAS EN BODEGA
+                // 1. DÍAS EN BODEGA
                 var badgeBodega = "";
                 if (item.fechaIngreso) {
                     var fIngreso = new Date(item.fechaIngreso);
@@ -379,7 +410,7 @@
                     `;
                 }
 
-                // 2. CÁLCULO FECHA DE EXPIRACIÓN
+                // 2. FECHA DE EXPIRACIÓN
                 var badgeExpiracion = "";
                 if (item.fechaExpiracion) {
                     var fExp = new Date(item.fechaExpiracion);
@@ -433,11 +464,71 @@
             }
         };
 
+        // CORRECCIÓN REGISTRAR USO
+        document.getElementById('btn-registrar-uso').addEventListener('click', function() {
+            formInsumo.classList.add('hidden');
+            formUso.classList.remove('hidden');
+            
+            var selectInsumo = document.getElementById('uso-insumo-id');
+            selectInsumo.innerHTML = '<option value="">-- Selecciona un insumo --</option>';
+            insumosLocales.forEach(function(i) {
+                selectInsumo.innerHTML += `<option value="${i.id}">${i.nombre} (${i.codigoUnico || 'S/C'}) - Disp: ${i.stock} ${i.unidadMedida || ''}</option>`;
+            });
+            
+            document.getElementById('uso-fecha').value = new Date().toISOString().split('T')[0];
+            document.getElementById('uso-cantidad').value = "";
+            document.getElementById('uso-lote-brewfather').value = "";
+            document.getElementById('uso-error').classList.add('hidden');
+            formUso.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        document.getElementById('btn-cancelar-uso').addEventListener('click', function() {
+            formUso.classList.add('hidden');
+        });
+
+        document.getElementById('btn-guardar-uso').addEventListener('click', function() {
+            var id = document.getElementById('uso-insumo-id').value;
+            var cant = Number(document.getElementById('uso-cantidad').value);
+            var fecha = document.getElementById('uso-fecha').value;
+            var brewfather = document.getElementById('uso-lote-brewfather').value.trim();
+            var err = document.getElementById('uso-error');
+
+            if (!id || !cant || cant <= 0 || !fecha) {
+                err.textContent = "Selecciona un insumo, fecha y cantidad válida mayor a 0.";
+                err.classList.remove('hidden');
+                return;
+            }
+
+            var item = insumosLocales.find(function(i) { return i.id === id; });
+            if (!item) return;
+
+            var nuevoStock = Math.max(0, Number(item.stock) - cant);
+
+            db.collection("consumos").add({
+                idInsumo: id,
+                nombreInsumo: item.nombre || '',
+                loteInsumo: item.lote || 'S/L',
+                codigoUnicoInsumo: item.codigoUnico || 'S/C',
+                cantidadUsada: cant,
+                unidadMedida: item.unidadMedida || 'unidades',
+                fechaConsumo: fecha,
+                loteBrewfather: brewfather
+            }).then(function() {
+                return db.collection("inventario").doc(id).update({ stock: nuevoStock });
+            }).then(function() {
+                formUso.classList.add('hidden');
+            }).catch(function(error) {
+                err.textContent = "Error al registrar el uso en base de datos.";
+                err.classList.remove('hidden');
+            });
+        });
+
         window.verFicha = function(id) {
             idInsumoSeleccionado = id;
             var item = insumosLocales.find(function(i) { return i.id === id; });
             if(!item) return;
             
+            formUso.classList.add('hidden');
             formError.classList.add('hidden');
             btnEliminar.classList.remove('hidden');
             
@@ -465,6 +556,7 @@
 
         document.getElementById('btn-nuevo-insumo').addEventListener('click', function() {
             idInsumoSeleccionado = null;
+            formUso.classList.add('hidden');
             formError.classList.add('hidden');
             btnEliminar.classList.add('hidden');
             
@@ -511,7 +603,6 @@
 
             if (!pass || !user) return;
 
-            // Re-autenticación de seguridad para autorizar la escritura
             var credential = firebase.auth.EmailAuthProvider.credential(user.email, pass);
             user.reauthenticateWithCredential(credential)
                 .then(function() {
@@ -559,7 +650,6 @@
             cont.innerHTML = "";
             
             var totalValoriz = 0;
-            var insumosVencidos = 0;
             
             var htmlTabla = `
                 <table class="w-full text-xs text-left border-collapse">
