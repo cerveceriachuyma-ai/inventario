@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.4</title>
+<title>Chuyma Bodega · v3.5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -209,7 +209,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
       <div><label for="f-unidad">Unidad</label><select id="f-unidad"><option value="kg">kg</option><option value="g">g</option><option value="litros">litros</option><option value="mL">mL</option><option value="unidades">unidades</option><option value="ninguno">ninguno</option></select></div>
       <div><label for="f-precio">Total pagado ($)</label><input id="f-precio" type="number" step="1" min="0" inputmode="numeric" placeholder="119000"></div>
      </div>
-     <p id="f-cantidad-nota" class="nota" hidden>Copiamos el stock actual como cantidad comprada. Corrígela si compraste otra cantidad.</p>
+     <div id="f-cantidad-nota" class="costo-prev" hidden><span id="f-cantidad-txt"></span> <button type="button" class="btn" id="f-cantidad-usar" style="margin-top:8px" hidden></button></div>
      <div id="f-costo-prev" class="costo-prev" hidden></div>
     </fieldset>
     <fieldset>
@@ -420,6 +420,7 @@ function crearApiFirebase(){
     movDe:function(id){return MOV.where('idInsumo','==',id).get().then(function(s){return s.docs.map(limpiar)})},
     movRango:function(d,h){return MOV.where('fechaConsumo','>=',d).where('fechaConsumo','<=',h).get().then(function(s){return s.docs.map(limpiar)})},
     movTodos:function(){return MOV.get().then(function(s){return s.docs.map(limpiar)})},
+    recalcular:function(cambios){var b=db.batch();cambios.forEach(function(c){b.update(MOV.doc(c.id),c.datos)});return b.commit()},
     vigilarBatches:function(cb,err){return BAT.onSnapshot(function(s){cb(s.docs.map(limpiar))},err)},
     crearBatch:function(d){return BAT.add(d).then(function(r){return r.id})},
     actualizarBatch:function(id,d){return BAT.doc(id).update(d)},
@@ -440,7 +441,7 @@ function crearApiDemo(){
     {id:'d3',categoria:'levadura',nombre:'US-05',lote:'7781',codigoUnico:'US05-30987',stock:12,unidadMedida:'unidades',minimo:4,cantidadComprada:20,precioTotal:96000,tipoDocumento:'Boleta',documentoCompra:'5512',proveedor:'Fermentis',fechaIngreso:hace(30),fechaVencimiento:luego(20),laboratorio:'Fermentis',formato:'Seca'},
     {id:'d6',categoria:'laboratorio',nombre:'Buffer pH 7,00',lote:'B7-551',codigoUnico:'BUFFE-20417',stock:400,unidadMedida:'mL',minimo:100,cantidadComprada:500,precioTotal:23800,tipoDocumento:'Factura',proveedor:'Hanna',fechaIngreso:hace(50),fechaVencimiento:luego(200),sub:'Insumo'},
     {id:'d4',categoria:'limpieza',nombre:'Star San',lote:'SS-22',codigoUnico:'STARS-11873',stock:2.5,unidadMedida:'litros',minimo:1,cantidadComprada:5,precioTotal:65000,tipoDocumento:'Boleta',proveedor:'Five Star',fechaIngreso:hace(90),tipo:'Químico'},
-    {id:'d5',categoria:'empaque',nombre:'Botella ámbar 330 mL',lote:'S/L',codigoUnico:'BOTEL-72641',stock:480,unidadMedida:'unidades',minimo:200,proveedor:'Cristalerías',fechaIngreso:hace(15),tipo:'Botellas',variable:'330 mL'}
+    {id:'d5',categoria:'empaque',nombre:'Botella ámbar 330 mL',lote:'S/L',codigoUnico:'BOTEL-72641',stock:480,tipoDocumento:'Factura',unidadMedida:'unidades',minimo:200,proveedor:'Cristalerías',fechaIngreso:hace(15),tipo:'Botellas',variable:'330 mL'}
   ];
   var mov=[
     {id:'m1',idInsumo:'d2',nombreInsumo:'Citra T90',loteInsumo:'HC-118',tipo:'ingreso',cantidadUsada:1500,delta:1500,unidadMedida:'g',fechaConsumo:hace(64),loteBrewfather:'',nota:'Ingreso inicial',costoUnitario:50,costoTotal:75000},
@@ -471,6 +472,7 @@ function crearApiDemo(){
     movDe:function(id){return ok(mov.filter(function(m){return m.idInsumo===id}))},
     movRango:function(d,h){return ok(mov.filter(function(m){return m.fechaConsumo>=d&&m.fechaConsumo<=h}))},
     movTodos:function(){return ok(mov.slice())},
+    recalcular:function(cambios){cambios.forEach(function(c){Object.assign(mov.find(function(m){return m.id===c.id}),c.datos)});return ok()},
     vigilarBatches:function(cb){bcbs.push(cb);setTimeout(emitirB,0);return function(){bcbs=bcbs.filter(function(c){return c!==cb})}},
     crearBatch:function(d){var id='b'+(++n);bat.push(Object.assign({id:id},d));emitirB();return ok(id)},
     actualizarBatch:function(id,d){Object.assign(bat.find(function(b){return b.id===id}),d);emitirB();return ok()},
@@ -605,13 +607,14 @@ function pintarPerfil(id,cargarHist){
     '<dl class="datos">'+dt.map(function(d){return '<dt>'+d[0]+'</dt><dd>'+d[1]+'</dd>'}).join('')+'</dl>'+
     '<div class="bloque"><div class="sec"><h3>Documentos</h3><button class="btn" type="button" id="p-doc">Agregar documento</button></div>'+
     (docs(it).length?docs(it).map(function(d){return '<div class="doc"><div>'+esc(d.tipo)+'<small>'+esc(d.nombre||'Sin nombre')+' · '+fmtF(d.fecha)+'</small></div><div class="acciones"><a class="btn" href="'+esc(d.url)+'" target="_blank" rel="noopener">Abrir</a><button class="btn btn-link" type="button" data-quitar="'+esc(d.id)+'">Quitar</button></div></div>'}).join(''):'<p class="nota">Sin documentos. Agrega la ficha técnica'+(necesitaSDS(it)?' y la hoja de seguridad':'')+' de esta compra.</p>')+'</div>'+
-    '<div class="sec"><h3>Historial</h3><div class="acciones"><button class="btn" type="button" id="p-ajuste">Ajustar stock</button><button class="btn btn-p" type="button" id="p-uso">Registrar uso</button></div></div>'+
+    '<div class="sec"><h3>Historial</h3><div class="acciones"><button class="btn" type="button" id="p-recalc">Recalcular costos</button><button class="btn" type="button" id="p-ajuste">Ajustar stock</button><button class="btn btn-p" type="button" id="p-uso">Registrar uso</button></div></div>'+
     '<div id="p-hist">'+(cargarHist?'<p class="nota">Cargando historial…</p>':(pintarPerfil._h||''))+'</div>';
   $('#p-editar').onclick=protegido('editar este insumo',function(){abrirForm(id)});
   $('#p-etiqueta').onclick=function(){abrirEtiqueta(it)};
   $('#p-uso').onclick=function(){abrirMov(it,'uso')};
   $('#p-ajuste').onclick=protegido('ajustar el stock',function(){abrirMov(it,'ajuste')});
   $('#p-doc').onclick=function(){abrirDoc(it)};
+  $('#p-recalc').onclick=protegido('recalcular los costos de este insumo',function(){recalcularCostos(it)});
   Array.prototype.forEach.call(document.querySelectorAll('[data-quitar]'),function(b){b.onclick=protegido('quitar un documento',function(){quitarDoc(it,b.dataset.quitar)})});
   if(cargarHist)cargarHistorial(id);
 }
@@ -622,10 +625,24 @@ function cargarHistorial(id){
     var h=ms.length?ms.map(function(m){
       var d=deltaMov(m),t=tipoMov(m),et=t==='ingreso'?'Ingreso':t==='ajuste'?'Ajuste':'Consumo';
       var det=[et,m.loteBrewfather,m.nota].filter(Boolean).map(esc).join(' · ');
-      return '<div class="mov"><div>'+fmtF(m.fechaConsumo)+'<small>'+det+'</small></div><div class="der"><b class="'+(d>0?'mas':'')+'">'+(d>0?'+':'−')+fmtN(Math.abs(d))+' '+esc(UNI[m.unidadMedida]!=null?UNI[m.unidadMedida]:(m.unidadMedida||''))+'</b>'+(m.costoTotal!=null?'<small>'+fmtP(m.costoTotal)+'</small>':'')+'</div></div>';
+      return '<div class="mov"><div>'+fmtF(m.fechaConsumo)+'<small>'+det+'</small></div><div class="der"><b class="'+(d>0?'mas':'')+'">'+(d>0?'+':'−')+fmtN(Math.abs(d))+' '+esc(UNI[m.unidadMedida]!=null?UNI[m.unidadMedida]:(m.unidadMedida||''))+'</b>'+(m.costoTotal!=null?'<small>'+fmtP(m.costoTotal)+(m.costoCorregido?' · corregido '+fmtF(m.costoCorregido):'')+'</small>':'<small>Sin precio</small>')+'</div></div>';
     }).join(''):'<p class="nota">Todavía no hay movimientos registrados para este insumo.</p>';
     pintarPerfil._h=h;var box=$('#p-hist');if(box)box.innerHTML=h;
   }).catch(function(){var box=$('#p-hist');if(box)box.innerHTML='<p class="err">No se pudo cargar el historial. Revisa tu conexión y las reglas de "consumos".</p>'});
+}
+
+/* ---------- Recalcular costos ---------- */
+function recalcularCostos(it){
+  var cu=costoUnit(it),u=uni(it);
+  if(cu==null){alert('Este insumo no tiene precio o cantidad comprada. Agrégalos en "Editar" antes de recalcular.');return}
+  api.movDe(it.id).then(function(ms){
+    var cambios=ms.filter(function(m){return m.costoUnitario==null||Math.abs(num(m.costoUnitario)-cu)>0.0001}).map(function(m){
+      return {id:m.id,datos:{costoUnitario:cu,costoTotal:cu*num(m.cantidadUsada),costoCorregido:hoy()}};
+    });
+    if(!cambios.length){toast('Todos los costos ya están correctos.');return}
+    if(!confirm('Se recalcularán '+cambios.length+(cambios.length===1?' movimiento':' movimientos')+' con el costo actual: '+fmtPu(cu)+' por '+(u||'unidad')+'.\n\nLa cantidad, fecha y batch no cambian. ¿Continuar?'))return;
+    return api.recalcular(cambios).then(function(){toast('Costos recalculados');cargarHistorial(it.id)});
+  }).catch(function(){toast('No se pudo recalcular. Revisa tu conexión y la regla de "consumos".')});
 }
 
 /* ---------- Registrar uso / ajuste ---------- */
@@ -710,12 +727,32 @@ function abrirForm(id){
   $('#f-proveedor').value=d.proveedor||'';$('#f-tipodoc').value=d.tipoDocumento==='Boleta'?'Boleta':'Factura';$('#f-ndoc').value=d.documentoCompra||'';
   $('#f-fecha').value=d.fechaIngreso||'';$('#f-unidad').value=UNI[d.unidadMedida]!=null?d.unidadMedida:'kg';
   $('#f-precio').value=d.precioTotal||'';
-  var copiar=it&&!it.cantidadComprada;
-  $('#f-cantidad').value=copiar?(it.stock||''):(d.cantidadComprada||'');$('#f-cantidad-nota').hidden=!copiar;
+  $('#f-cantidad').value=d.cantidadComprada||'';$('#f-cantidad-nota').hidden=true;
+  if(it)sugerirCantidad(it);
   $('#f-stock').value=it?fmtN(it.stock)+' '+uni(it):'';
   $('#f-minimo').value=d.minimo||'';$('#f-venc').value=venc(d);$('#f-dias').value=d.diasCriticos||'';
   pintarDinamicos(sel.value,d);$('#f-sds').checked=necesitaSDS(d);previewCosto();ver('form');$('#f-nombre').focus();
 }
+function sugerirCantidad(it){
+  var u=uni(it);
+  api.movDe(it.id).then(function(ms){
+    if(actual!==it.id||vista!=='form')return;
+    var ing=ms.filter(function(m){return tipoMov(m)==='ingreso'}),otros=ms.filter(function(m){return tipoMov(m)!=='ingreso'});
+    var usado=r3(-otros.reduce(function(s,m){return s+deltaMov(m)},0)),sug,txt;
+    if(ing.length){sug=r3(ing.reduce(function(s,m){return s+num(m.cantidadUsada)},0));txt='Según el ingreso registrado en la bitácora, compraste '+fmtN(sug)+' '+u+'.'}
+    else{sug=r3(num(it.stock)+usado);txt='Según la bitácora: '+fmtN(it.stock)+' '+u+' en stock + '+fmtN(usado)+' '+u+' consumidos = '+fmtN(sug)+' '+u+'. Revisa con tu factura.'}
+    var actualC=num($('#f-cantidad').value),btn=$('#f-cantidad-usar');
+    if(!it.cantidadComprada){
+      $('#f-cantidad').value=sug||'';previewCosto();
+      $('#f-cantidad-txt').textContent=txt;btn.hidden=true;$('#f-cantidad-nota').hidden=false;
+    }else if(sug>actualC+0.0005){
+      $('#f-cantidad-txt').textContent='⚠️ La cantidad comprada guardada ('+fmtN(actualC)+' '+u+') es menor que lo que muestra la bitácora. '+txt;
+      btn.textContent='Usar '+fmtN(sug)+' '+u;btn.hidden=false;btn.onclick=function(){$('#f-cantidad').value=sug;previewCosto();btn.hidden=true};
+      $('#f-cantidad-nota').hidden=false;
+    }
+  }).catch(function(){});
+}
+
 $('#form-insumo').addEventListener('submit',function(e){
   e.preventDefault();var err=$('#f-err');err.hidden=true;
   var nombre=$('#f-nombre').value.trim(),c=sel.value,cant=num($('#f-cantidad').value);
