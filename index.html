@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.12</title>
+<title>Chuyma Bodega · v3.13</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -252,10 +252,15 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
     <div class="cab"><div><button type="button" class="btn-link" data-volver="bform">Volver</button><h2 id="bf-titulo">Nuevo batch</h2></div></div>
     <fieldset><legend>Batch</legend><div class="grid">
      <div><label for="bf-codigo">Código</label><input id="bf-codigo" placeholder="#045"></div>
-     <div><label for="bf-nombre">Cerveza o estilo</label><input id="bf-nombre" placeholder="Pale Ale"></div>
+     <div><label for="bf-nombre">Estilo de cerveza</label><input id="bf-nombre" placeholder="Pale Ale"></div>
      <div><label for="bf-fecha">Fecha de cocción</label><input id="bf-fecha" type="date"></div>
      <div><label for="bf-vol">Volumen final envasado (L)</label><input id="bf-vol" type="number" step="any" min="0" inputmode="decimal" placeholder="400"></div>
     </div></fieldset>
+    <fieldset><legend>Alcohol</legend><div class="grid">
+     <div><label for="bf-og">Densidad inicial (OG)</label><input id="bf-og" type="text" inputmode="decimal" placeholder="1,050"></div>
+     <div><label for="bf-fg">Densidad final (FG)</label><input id="bf-fg" type="text" inputmode="decimal" placeholder="1,010"></div>
+     <div><label for="bf-abv">Grado alcohólico (% vol)</label><input id="bf-abv" type="text" inputmode="decimal" placeholder="se calcula solo"></div>
+    </div><p class="nota" id="bf-abv-nota">Escribe la OG y la FG y la app calcula el grado alcohólico. Si lo mediste de otra forma, escríbelo directo.</p></fieldset>
     <fieldset><legend>Formatos de envase</legend><div class="checks" id="bf-envases"></div><p class="nota">Elige en qué formatos quieres ver el costo por envase.</p></fieldset>
     <fieldset><legend>Proceso de cocción</legend>
      <label class="check"><input type="checkbox" id="bf-auto"> Calcular gas, agua y mano de obra automáticamente</label>
@@ -368,7 +373,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.12";
+var APP_VERSION = "v3.13";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -400,6 +405,9 @@ var TARIFAS_DEF={gasPrecio:21500,gasKg:11,aguaM3:1010,hora:5500,efic:40,tAgua:15
 var PROC_DEF={macL:30,macT:73,lavL:30,lavT:78,preL:48,postL:43,enfL:80,limL:100,horas:8};
 var TARIFAS=Object.assign({},TARIFAS_DEF);
 var PCI_GAS=46,CALOR_EVAP=2.257,T_MOSTO=65;
+function dens(v){var n=num(v);if(n>1.2&&n<200)n=1+n/1000;return n>=0.98&&n<=1.2?n:0}
+function fmtDens(n){return n?n.toFixed(3).replace('.',','):''}
+function abvDe(og,fg){return og&&fg&&og>fg?Math.round((og-fg)*131.25*10)/10:null}
 function calcProceso(pr,t){
   var T0=num(t.tAgua),kj=4.186*(num(pr.macL)*Math.max(0,num(pr.macT)-T0)+num(pr.lavL)*Math.max(0,num(pr.lavT)-T0)+num(pr.preL)*Math.max(0,100-T_MOSTO));
   var evap=Math.max(0,num(pr.preL)-num(pr.postL)),mj=kj/1000+evap*CALOR_EVAP,ef=num(t.efic)/100;
@@ -1049,7 +1057,7 @@ function abrirBatchForm(id,texto){
   var d=b||{codigo:texto||'',nombre:'',fecha:hoy(),volumenL:'',envases:['Botella 330 mL'],adicionales:[],textoOrigen:texto||''};
   var m=String(d.codigo).match(/^(#?\d+)\s+(.+)$/);if(texto&&m){d.codigo=m[1];d.nombre=m[2]}
   $('#bf-titulo').textContent=b?'Editar batch':'Nuevo batch';$('#bf-err').hidden=true;$('#bf-guardar').disabled=false;
-  $('#bf-codigo').value=d.codigo||'';$('#bf-nombre').value=d.nombre||'';$('#bf-fecha').value=d.fecha||'';$('#bf-vol').value=num(d.volumenL)||'';$('#bf-nota').value=d.nota||'';
+  $('#bf-codigo').value=d.codigo||'';$('#bf-og').value=d.og?fmtDens(d.og):'';$('#bf-fg').value=d.fg?fmtDens(d.fg):'';$('#bf-abv').value=d.abvManual&&d.abv?String(d.abv).replace('.',','):'';$('#bf-nombre').value=d.nombre||'';$('#bf-fecha').value=d.fecha||'';$('#bf-vol').value=num(d.volumenL)||'';$('#bf-nota').value=d.nota||'';
   $('#form-batch').dataset.origen=d.textoOrigen||'';
   $('#bf-envases').innerHTML=Object.keys(ENVASES).map(function(k){return '<label class="check"><input type="checkbox" value="'+esc(k)+'"'+((d.envases||[]).indexOf(k)>=0?' checked':'')+'> '+esc(k)+'</label>'}).join('');
   var ad={};(d.adicionales||[]).forEach(function(a){ad[a.concepto]=a.monto});
@@ -1061,7 +1069,7 @@ function abrirBatchForm(id,texto){
   var difiere=!!(pr&&pr.t&&!mismasTarifas(pr.t,TARIFAS));$('#bf-tact-box').hidden=!difiere;$('#bf-tact').checked=false;
   if($('#bf-auto').checked)cs=cs.filter(function(c){return AUTO_CONC.indexOf(c)<0||num(ad[c])>0});
   $('#bf-adic').innerHTML=cs.map(function(c,i){return '<div><label for="bf-a'+i+'">'+esc(c)+'</label><input id="bf-a'+i+'" data-concepto="'+esc(c)+'" type="number" min="0" step="1" inputmode="numeric" value="'+(ad[c]||'')+'"></div>'}).join('');
-  pintarProcForm();ver('bform');$('#bf-codigo').focus();
+  pintarProcForm();notaAbv();ver('bform');$('#bf-codigo').focus();
 }
 function tarifasForm(){var tg=$('#form-batch').dataset.tg;return (tg&&!$('#bf-tact').checked)?JSON.parse(tg):TARIFAS}
 function leerProcForm(){var o={};Array.prototype.forEach.call(document.querySelectorAll('#bf-proc [data-p]'),function(el){o[el.dataset.p]=num(el.value)});return o}
@@ -1072,6 +1080,9 @@ function pintarProcForm(){
   var r=calcProceso(leerProcForm(),tarifasForm());
   $('#bf-proc-prev').innerHTML='Gas: '+fmtN(Math.round(r.kg*100)/100)+' kg estimados · '+fmtP(r.gas)+'<br>Agua: '+fmtN(r.litros)+' L · '+fmtP(r.agua)+'<br>Mano de obra: '+fmtN(r.horas)+' h × '+fmtP(r.hora)+' · '+fmtP(r.mo)+'<br><b>Total: '+fmtP(r.total)+'</b>';
 }
+function notaAbv(){var a=abvDe(dens($('#bf-og').value),dens($('#bf-fg').value)),m=num($('#bf-abv').value);
+  $('#bf-abv-nota').textContent=m>0?'Se usará el grado que escribiste: '+fmtN(m)+' % vol.':a!=null?'Grado alcohólico calculado: '+fmtN(a)+' % vol. Fórmula (OG − FG) × 131,25.':'Escribe la OG y la FG y la app calcula el grado alcohólico. Si lo mediste de otra forma, escríbelo directo.'}
+['#bf-og','#bf-fg','#bf-abv'].forEach(function(x){$(x).addEventListener('input',notaAbv)});
 $('#bf-auto').addEventListener('change',pintarProcForm);$('#bf-tact').addEventListener('change',pintarProcForm);
 $('#bf-proc').addEventListener('input',pintarProcForm);
 $('#form-batch').addEventListener('submit',function(e){
@@ -1083,6 +1094,8 @@ $('#form-batch').addEventListener('submit',function(e){
     envases:Array.prototype.map.call(document.querySelectorAll('#bf-envases input:checked'),function(i){return i.value}),
     adicionales:Array.prototype.map.call(document.querySelectorAll('#bf-adic input'),function(i){return {concepto:i.dataset.concepto,monto:num(i.value)}}).filter(function(a){return a.monto>0})};
   if(!batchEdit&&$('#form-batch').dataset.origen)p.textoOrigen=$('#form-batch').dataset.origen;
+  p.og=dens($('#bf-og').value);p.fg=dens($('#bf-fg').value);
+  var abvM=num($('#bf-abv').value);if(abvM>0){p.abv=abvM;p.abvManual=true}else{p.abv=abvDe(p.og,p.fg);p.abvManual=false}
   if($('#bf-auto').checked){p.proceso=Object.assign({auto:true},leerProcForm(),{t:Object.assign({},tarifasForm())});
     p.adicionales=p.adicionales.filter(function(a){return AUTO_CONC.indexOf(a.concepto)<0})}
   else p.proceso={auto:false};
@@ -1098,6 +1111,37 @@ function abrirBatch(id){
   api.movBatch(b).then(function(ms){if(batchActual===id)pintarBatch(b,ms.filter(function(m){return tipoMov(m)==='consumo'}))})
   .catch(function(){$('#v-batch').querySelector('.nota').textContent='No se pudieron cargar los consumos del batch. Revisa tu conexión.'});
 }
+/* ---------- Costo por formato ---------- */
+var TIPOS_ENVASE=['Botellas','Latas','Tapas Corona','Tapas de Latas','Etiquetas'];
+function esEnvase(it){return !!(it&&it.categoria==='empaque'&&TIPOS_ENVASE.indexOf(it.tipo)>=0)}
+function mlDe(t){var m=String(t||'').replace(',','.').match(/(\d+(?:\.\d+)?)\s*(ml|cc|l|lt|litros?)\b/i);if(!m)return null;var n=parseFloat(m[1]);return /^(ml|cc)$/i.test(m[2])?n:n*1000}
+function formatoDe(it){var ml=mlDe(it.variable)||mlDe(it.nombre);if(!ml)return null;var pre=it.tipo==='Latas'?'Lata':'Botella';
+  var k=Object.keys(ENVASES).find(function(x){return x.indexOf(pre)===0&&ENVASES[x]===ml});return k||(pre+' '+(ml>=1000?fmtN(ml/1000)+' L':fmtN(ml)+' mL'))}
+function cuInv(filtro){var c=inv.filter(function(i){return esEnvase(i)&&filtro(i)&&costoUnit(i)!=null});return c.length?costoUnit(c[0]):null}
+function costosFormato(b,ms,cplLiq){
+  var bot={},tap={q:0,c:0},eti={q:0,c:0},tapL={q:0,c:0};
+  ms.forEach(function(m){var it=inv.find(function(i){return i.id===m.idInsumo});if(!esEnvase(it))return;var q=num(m.cantidadUsada),c=m.costoTotal;
+    if(it.tipo==='Botellas'||it.tipo==='Latas'){var k=formatoDe(it);if(!k)return;bot[k]=bot[k]||{q:0,c:0,sin:0,ml:mlDe(it.variable)||mlDe(it.nombre),lata:it.tipo==='Latas'};bot[k].q+=q;if(c!=null)bot[k].c+=c;else bot[k].sin+=q}
+    else{var g=it.tipo==='Etiquetas'?eti:it.tipo==='Tapas de Latas'?tapL:tap;if(c!=null){g.q+=q;g.c+=c}}});
+  var estilo=String(b.nombre||'').toLowerCase();
+  var cuTap=tap.q?tap.c/tap.q:cuInv(function(i){return i.tipo==='Tapas Corona'});
+  var cuTapL=tapL.q?tapL.c/tapL.q:cuInv(function(i){return i.tipo==='Tapas de Latas'});
+  var cuEti=eti.q?eti.c/eti.q:(cuInv(function(i){return i.tipo==='Etiquetas'&&estilo&&estilo.indexOf(String(i.variable||'').toLowerCase())>=0&&i.variable})||cuInv(function(i){return i.tipo==='Etiquetas'}));
+  var keys=Object.keys(bot);(b.envases||[]).forEach(function(k){if(keys.indexOf(k)<0&&ENVASES[k])keys.push(k)});
+  keys.sort(function(a,c){return (ENVASES[a]||bot[a].ml||0)-(ENVASES[c]||bot[c].ml||0)});
+  return keys.map(function(k){var r=bot[k],ml=ENVASES[k]||r.ml,barril=/^Barril/.test(k),lata=r?r.lata:/^Lata/.test(k);
+    var cuEnv=null;
+    if(barril)cuEnv=0;
+    else if(r&&r.q&&!r.sin)cuEnv=r.c/r.q;
+    else cuEnv=cuInv(function(i){return (i.tipo==='Botellas'||i.tipo==='Latas')&&formatoDe(i)===k});
+    var piezas=barril?0:(lata?cuTapL:cuTap),eq=barril?0:cuEti;
+    var envase=(cuEnv==null||(!barril&&(piezas==null||eq==null)))?null:cuEnv+(piezas||0)+(eq||0);
+    var cerveza=cplLiq!=null?cplLiq*ml/1000:null;
+    var unidad=(envase!=null&&cerveza!=null)?cerveza+envase:null;
+    return {k:k,ml:ml,unidades:r?r.q:null,cerveza:cerveza,envase:envase,unidad:unidad,litro:unidad!=null?unidad/(ml/1000):null,total:(unidad!=null&&r&&r.q)?unidad*r.q:null,barril:barril,faltan:!barril&&(cuEnv==null?'botella':piezas==null?'tapa':eq==null?'etiqueta':'')};
+  });
+}
+
 function pintarBatch(b,ms){
   function u(m){return UNI[m.unidadMedida]!=null?UNI[m.unidadMedida]:(m.unidadMedida||'')}
   var orden=Object.keys(CATS).concat(['otros']),grupos={},totIns=0,sinCosto=0;
@@ -1114,16 +1158,29 @@ function pintarBatch(b,ms){
   });
   var adic=(b.adicionales||[]).slice(),prc=procesoDe(b);
   if(prc)adic=[{concepto:'Gas · '+fmtN(Math.round(prc.kg*100)/100)+' kg estimados',monto:prc.gas},{concepto:'Agua · '+fmtN(prc.litros)+' L',monto:prc.agua},{concepto:'Mano de obra · '+fmtN(prc.horas)+' h × '+fmtP(prc.hora),monto:prc.mo}].concat(adic);
-  var totAd=costoAdic(b),total=totIns+totAd,vol=num(b.volumenL),cpl=vol?total/vol:null;
-  var mets='<div class="met"><span>Costo de producción</span><b>'+fmtP(total)+'</b><small>Insumos '+fmtP(totIns)+' · otros '+fmtP(totAd)+'</small></div>'+
+  var totAd=costoAdic(b),total=totIns+totAd,vol=num(b.volumenL);
+  var totEnv=ms.reduce(function(s2,m){var it=inv.find(function(i){return i.id===m.idInsumo});return s2+(esEnvase(it)&&m.costoTotal!=null?m.costoTotal:0)},0);
+  var liq=total-totEnv,cplLiq=vol?liq/vol:null;
+  var fm=costosFormato(b,ms,cplLiq),litrosEnv=fm.reduce(function(s2,f){return s2+(f.unidades?f.unidades*f.ml/1000:0)},0);
+  var abv=num(b.abv)||abvDe(num(b.og),num(b.fg));
+  var mets='<div class="met"><span>Estilo</span><b>'+esc(b.nombre||'—')+'</b>'+(b.nombre?'':'<small>Agrégalo en "Editar"</small>')+'</div>'+
+    '<div class="met"><span>Grado alcohólico</span><b>'+(abv?fmtN(abv)+' % vol':'—')+'</b><small>'+(num(b.og)||num(b.fg)?'OG '+(fmtDens(num(b.og))||'—')+' · FG '+(fmtDens(num(b.fg))||'—'):'Agrega OG y FG en "Editar"')+'</small></div>'+
+    '<div class="met"><span>Costo de producción</span><b>'+fmtP(total)+'</b><small>Cerveza '+fmtP(liq)+' · envases '+fmtP(totEnv)+'</small></div>'+
     '<div class="met"><span>Volumen envasado</span><b>'+(vol?fmtN(vol)+' L':'—')+'</b>'+(vol?'':'<small>Agrégalo en "Editar"</small>')+'</div>'+
-    '<div class="met"><span>Costo por litro</span><b>'+(cpl!=null?fmtPu(cpl):'—')+'</b></div>';
-  var env=(b.envases||[]).filter(function(k){return ENVASES[k]});
+    '<div class="met"><span>Costo de la cerveza por litro</span><b>'+(cplLiq!=null?fmtPu(cplLiq):'—')+'</b><small>Sin envase</small></div>';
+  var tf='';
+  if(fm.length){
+    tf='<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costo por formato</h3>'+(cplLiq==null?'<p class="nota">Agrega el volumen envasado en "Editar" para calcular el costo por formato.</p>':
+      '<div class="scroll"><table class="tabla"><thead><tr><th>Formato</th><th class="n">Unidades</th><th class="n">Cerveza</th><th class="n">Envase</th><th class="n">Por unidad</th><th class="n">Por litro</th><th class="n">Total</th></tr></thead><tbody>'+
+      fm.map(function(f){return '<tr><td>'+esc(f.k)+'</td><td class="n">'+(f.unidades?fmtN(f.unidades):'—')+'</td><td class="n">'+fmtP(f.cerveza)+'</td><td class="n">'+(f.envase!=null?fmtP(f.envase):'Falta '+f.faltan)+'</td><td class="n"><b>'+fmtP(f.unidad)+'</b></td><td class="n">'+fmtP(f.litro)+'</td><td class="n">'+(f.total!=null?fmtP(f.total):(f.unidad!=null&&vol&&!f.barril?'≈ '+fmtP(f.unidad*Math.floor(vol*1000/f.ml))+'<br><small style="color:var(--hint)">'+fmtN(Math.floor(vol*1000/f.ml))+' u. si todo va aquí</small>':'—'))+'</td></tr>'}).join('')+
+      '</tbody></table></div><p class="nota">Envase = botella o lata + tapa + etiqueta (una por unidad)'+(fm.some(function(f){return f.barril})?'; los barriles se consideran retornables, sin costo de envase':'')+'. Si un formato no tiene unidades, se calcula con los precios de tu bodega: registra en este batch el uso de botellas, tapas y etiquetas al envasar.</p>'+
+      (litrosEnv&&vol&&Math.abs(litrosEnv-vol)/vol>0.05?'<p class="nota" style="color:var(--warn)">⚠️ Las botellas registradas suman '+fmtN(Math.round(litrosEnv*10)/10)+' L, pero el volumen envasado dice '+fmtN(vol)+' L. Revisa una de las dos cifras.</p>':''))+'</div>';
+  }
   $('#v-batch').innerHTML=
     '<div class="cab"><div><button type="button" class="btn-link no-print" data-volver>Volver</button><h2>'+esc(etiquetaB(b))+'</h2><p class="sub">Chuyma · Informe de batch · cocción '+fmtF(b.fecha)+'</p></div>'+
     '<div class="acciones no-print"><button class="btn" type="button" id="bt-editar">Editar</button><button class="btn btn-p" type="button" id="bt-imprimir">Imprimir o guardar PDF</button></div></div>'+
     '<div class="metricas">'+mets+'</div>'+
-    (env.length&&cpl!=null?'<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costo por envase</h3><div class="scroll"><table class="tabla"><tbody>'+env.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="n">'+fmtP(cpl*ENVASES[k]/1000)+'</td></tr>'}).join('')+'</tbody></table></div><p class="nota">Promedio por volumen. Incluye todos los insumos del batch, también envases y tapas si los registraste.</p></div>':'')+
+    tf+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Insumos utilizados</h3>'+(ms.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Insumo</th><th class="n">Cantidad</th><th class="n">Costo</th></tr></thead><tbody>'+filas+'<tr class="tot"><td colspan="2">Total insumos</td><td class="n">'+fmtP(totIns)+'</td></tr></tbody></table></div>':'<p class="nota">Este batch todavía no tiene consumos registrados.</p>')+
     (sinCosto?'<p class="nota">* '+sinCosto+(sinCosto===1?' insumo no tenía':' insumos no tenían')+' precio al momento del uso. El costo real es mayor que el mostrado.</p>'+BTN_COMPLETAR:'')+'</div>'+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costos adicionales</h3>'+(adic.length?'<div class="scroll"><table class="tabla"><tbody>'+adic.map(function(a){return '<tr><td>'+esc(a.concepto)+'</td><td class="n">'+fmtP(num(a.monto))+'</td></tr>'}).join('')+'<tr class="tot"><td>Total adicionales</td><td class="n">'+fmtP(totAd)+'</td></tr></tbody></table></div>':'<p class="nota">Sin costos adicionales. Agrega gas, luz, agua y mano de obra en "Editar" para tener el costo real.</p>')+'</div>'+
