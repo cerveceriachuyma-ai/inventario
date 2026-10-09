@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.16</title>
+<title>Chuyma Bodega · v3.17</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -165,6 +165,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
    <div><p class="marca">Chuyma bodega<span class="ver app-ver"></span></p><p id="resumen" class="sub"></p></div>
    <div class="acciones">
     <button class="btn" id="b-batches" type="button">Batches</button>
+    <button class="btn" id="b-cava" type="button">Cava</button>
     <button class="btn" id="b-informe" type="button">Informe</button>
     <button class="btn" id="b-respaldo" type="button">Respaldo</button>
     <button class="btn btn-link" id="b-salir" type="button">Salir</button>
@@ -291,6 +292,12 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
    </form>
   </section>
 
+  <section id="v-cava" hidden>
+   <div class="cab no-print"><div><button type="button" class="btn-link" data-volver>Volver</button><h2>Cava</h2><p class="sub">Producto terminado · se llena solo al registrar un envasado</p></div><button type="button" class="btn btn-p" id="cv-imprimir">Imprimir reporte</button></div>
+   <div class="solo-print"><h2 style="margin:0">Chuyma · Reporte de cava</h2><p id="cv-print-sub" style="margin:2px 0 12px"></p></div>
+   <div id="cv-cuerpo"><p class="nota">Cargando…</p></div>
+  </section>
+
   <section id="v-informe" hidden>
    <div class="cab no-print">
     <div><button type="button" class="btn-link" data-volver>Volver</button><h2>Informe de consumos</h2></div>
@@ -349,10 +356,39 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
   <h4 style="margin:18px 0 0">2. Piezas que se descontarán de bodega</h4>
   <p class="nota">Se calculan solas: 1 tapa y 1 etiqueta por botella. Puedes corregirlas, por ejemplo si se quebró una botella.</p>
   <div id="env-piezas"></div>
+  <h4 style="margin:18px 0 0">3. Cava</h4>
+  <p class="nota">Vienen con la última ubicación y el último precio que usaste para esta cerveza. Cambia solo lo que sea distinto.</p>
+  <div id="env-cava"></div>
   <div id="env-avisos"></div>
   <div class="costo-prev" id="env-lote"></div>
   <p id="env-err" class="err" hidden></p>
   <div class="pie"><button type="button" class="btn" id="env-cancelar">Cancelar</button><button type="submit" class="btn btn-p" id="env-ok">Registrar envasado</button></div>
+ </form>
+</dialog>
+<dialog id="dlg-cv">
+ <form id="form-cv" method="dialog" novalidate>
+  <h3 id="cv-titulo">Datos de cava</h3>
+  <p class="nota" id="cv-sub"></p>
+  <div class="campo"><label for="cv-ubic">Ubicación en visicooler o cava</label><select id="cv-ubic"></select></div>
+  <div class="campo" id="cv-ubic-otra-box" hidden><label for="cv-ubic-otra">Escribe la ubicación</label><input id="cv-ubic-otra" placeholder="Ej.: Bodega fría, repisa 2"></div>
+  <div id="cv-precios"></div>
+  <p class="nota">Precio de venta <b>bruto</b> (con IVA 19 % e ILA 20,5 %, tasas del SII). La app calcula el neto y tu margen.</p>
+  <p id="cv-err" class="err" hidden></p>
+  <div class="pie"><button type="button" class="btn" id="cv-cancelar">Cancelar</button><button type="submit" class="btn btn-p" id="cv-ok">Guardar</button></div>
+ </form>
+</dialog>
+<dialog id="dlg-rt">
+ <form id="form-rt" method="dialog" novalidate>
+  <h3>Registrar salida de cava</h3>
+  <p class="nota" id="rt-sub"></p>
+  <div class="grid">
+   <div><label for="rt-cant">Cantidad</label><input id="rt-cant" type="number" min="1" step="1" inputmode="numeric"></div>
+   <div><label for="rt-fecha">Fecha</label><input id="rt-fecha" type="date"></div>
+  </div>
+  <div class="campo"><label for="rt-motivo">Motivo</label><select id="rt-motivo"><option>Venta directa</option><option>Muestra</option><option>Control de calidad</option><option>Consumo propio</option><option>Merma o quiebre</option><option>Otro</option></select></div>
+  <div class="campo"><label for="rt-com">Comentario (opcional)</label><input id="rt-com" placeholder="Ej.: feria del sábado"></div>
+  <p id="rt-err" class="err" hidden></p>
+  <div class="pie"><button type="button" class="btn" id="rt-cancelar">Cancelar</button><button type="submit" class="btn btn-p" id="rt-ok">Registrar salida</button></div>
  </form>
 </dialog>
 <dialog id="dlg-et">
@@ -396,7 +432,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.16";
+var APP_VERSION = "v3.17";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -609,7 +645,7 @@ document.addEventListener('visibilitychange',function(){if(document.hidden&&Date
 
 /* ---------- Navegación ---------- */
 function ver(v){
-  ['lista','perfil','form','informe','batches','batch','bform'].forEach(function(x){$('#v-'+x).hidden=(x!==v)});
+  ['lista','perfil','form','informe','batches','batch','bform','cava'].forEach(function(x){$('#v-'+x).hidden=(x!==v)});
   vista=v;window.scrollTo(0,0);
 }
 document.addEventListener('click',function(e){
@@ -639,7 +675,7 @@ api.onAuth(function(user){
   if(desBatches){desBatches();desBatches=null}
   if(user){
     $('#login').hidden=true;$('#app').hidden=false;
-    desuscribir=api.vigilar(function(datos){inv=datos;pintarTodo()},function(e){
+    desuscribir=api.vigilar(function(datos){inv=datos.filter(function(i){return !i.esProductoTerminado});pintarTodo()},function(e){
       $('#lista').innerHTML='<div class="vacio">'+(e&&e.code==='permission-denied'?'Tu cuenta no tiene permiso para ver el inventario. Revisa las reglas de Firestore.':'No se pudo cargar el inventario. Revisa tu conexión.')+'</div>';
     });
     desBatches=api.vigilarBatches(function(d){var t=d.find(function(x){return x.id==='_tarifas'});TARIFAS=Object.assign({},TARIFAS_DEF,t?t.valores:{});d=d.filter(function(x){return x.id!=='_tarifas'});batches=d;batchesErr=false;if(vista==='batches')pintarBatches()},function(){batches=[];batchesErr=true;if(vista==='batches')pintarBatches()});
@@ -1165,6 +1201,114 @@ function costosFormato(b,ms,cplLiq){
   });
 }
 
+/* ---------- Cava (producto terminado) ---------- */
+var IMP_IVA=0.19,IMP_ILA=0.205,FACTOR_BRUTO=1+IMP_IVA+IMP_ILA; // SII: IVA 19 %, ILA cervezas 20,5 % (Ley 20.780)
+var UBICACIONES=['Izq Arriba','Izq Media','Izq Baja','Izq Piso','Derecha Arriba','Derecha Media','Derecha Baja','Derecha Piso'];
+var DIAS_CRITICO=120,cvDatos=[],cvFiltro='todos',cvSel=null;
+function netoDe(bruto){return num(bruto)/FACTOR_BRUTO}
+function stockFmt(e,k){return num((e.unidades||{})[k])-(e.salidas||[]).filter(function(x){return x.fmt===k}).reduce(function(s2,x){return s2+num(x.cantidad)},0)}
+function ultimoPrecio(estilo,k){var r=null,f='';batches.forEach(function(b){if(String(b.nombre||'').toLowerCase()!==String(estilo||'').toLowerCase())return;(b.envasados||[]).forEach(function(e){var p=e.cava&&e.cava.precios&&num(e.cava.precios[k]);if(p&&String(e.fecha)>=f){r=p;f=String(e.fecha)}})});return r}
+function ultimaUbic(){var r='',f='';batches.forEach(function(b){(b.envasados||[]).forEach(function(e){if(e.cava&&e.cava.ubicacion&&String(e.fecha)>=f){r=e.cava.ubicacion;f=String(e.fecha)}})});return r}
+function costoUnidades(b,ms){
+  var totIns=ms.reduce(function(s2,m){return s2+(m.costoTotal!=null?m.costoTotal:0)},0),total=totIns+costoAdic(b),vol=num(b.volumenL);
+  var totEnv=ms.reduce(function(s2,m){var it=inv.find(function(i){return i.id===m.idInsumo});return s2+(esEnvase(it)&&m.costoTotal!=null?m.costoTotal:0)},0);
+  var r={};costosFormato(b,ms,vol?(total-totEnv)/vol:null).forEach(function(f){r[f.k]=f.unidad});return r;
+}
+function abrirCava(){
+  ver('cava');$('#cv-cuerpo').innerHTML='<p class="nota">Cargando…</p>';
+  var bs=batches.filter(function(b){return (b.envasados||[]).length});
+  Promise.all(bs.map(function(b){return api.movBatch(b).then(function(ms){return {b:b,cu:costoUnidades(b,ms.filter(function(m){return tipoMov(m)==='consumo'}))}})})).then(function(rs){
+    cvDatos=[];
+    rs.forEach(function(r){(r.b.envasados||[]).forEach(function(e,ix){Object.keys(e.unidades||{}).forEach(function(k){
+      cvDatos.push({b:r.b,e:e,ix:ix,k:k,stock:stockFmt(e,k),costo:r.cu[k],precio:e.cava&&e.cava.precios?num(e.cava.precios[k]):0,ubic:e.cava&&e.cava.ubicacion||'',dias:dias(e.fecha,hoy())});
+    })})});
+    pintarCava();
+  }).catch(function(){$('#cv-cuerpo').innerHTML='<p class="err">No se pudo cargar la cava. Revisa tu conexión.</p>'});
+}
+function pintarCava(){
+  var hay=cvDatos.filter(function(d){return d.stock>0});
+  var falt=hay.filter(function(d){return !d.precio||!d.ubic}),crit=hay.filter(function(d){return d.dias>DIAS_CRITICO});
+  var lista=cvFiltro==='criticos'?crit:cvFiltro==='faltan'?falt:cvFiltro==='agotados'?cvDatos.filter(function(d){return d.stock<=0}):hay;
+  lista.sort(function(a,c){return String(a.b.nombre).localeCompare(String(c.b.nombre),'es')||(ENVASES[a.k]||0)-(ENVASES[c.k]||0)||String(a.e.fecha).localeCompare(String(c.e.fecha))});
+  var uds=hay.reduce(function(s2,d){return s2+d.stock},0),lit=hay.reduce(function(s2,d){return s2+d.stock*(ENVASES[d.k]||0)/1000},0);
+  var valCosto=hay.reduce(function(s2,d){return s2+(d.costo!=null?d.costo*d.stock:0)},0),valVenta=hay.reduce(function(s2,d){return s2+(d.precio?d.precio*d.stock:0)},0);
+  var mes=hoy().slice(0,7),sal=[];cvDatos.forEach(function(d){(d.e.salidas||[]).forEach(function(x){if(x.fmt===d.k&&String(x.fecha).slice(0,7)===mes)sal.push({d:d,x:x})})});
+  sal.sort(function(a,c){return String(c.x.fecha).localeCompare(String(a.x.fecha))});
+  var mets='<div class="met"><span>En stock</span><b>'+fmtN(uds)+' u.</b><small>'+fmtN(Math.round(lit*10)/10)+' L</small></div>'+
+    '<div class="met"><span>Valor a costo</span><b>'+fmtP(valCosto)+'</b></div>'+
+    '<div class="met"><span>Valor de venta (bruto)</span><b>'+fmtP(valVenta)+'</b>'+(falt.length?'<small>Faltan precios</small>':'')+'</div>'+
+    '<div class="met"><span>Salidas este mes</span><b>'+fmtN(sal.reduce(function(s2,y){return s2+num(y.x.cantidad)},0))+' u.</b></div>';
+  var chips=[['todos','En stock',hay.length],['faltan','Faltan datos',falt.length],['criticos','Más de '+DIAS_CRITICO+' días',crit.length],['agotados','Agotados',cvDatos.filter(function(d){return d.stock<=0}).length]].map(function(c){return '<button type="button" class="chip'+(cvFiltro===c[0]?' on':'')+'" data-cvf="'+c[0]+'">'+c[1]+' ('+c[2]+')</button>'}).join('');
+  var filas=lista.map(function(d,i){
+    var neto=d.precio?netoDe(d.precio):null,mg=neto!=null&&d.costo!=null?neto-d.costo:null;
+    return '<tr><td><b>'+esc(d.b.nombre||etiquetaB(d.b))+'</b><br><small style="color:var(--hint)">'+esc(d.k)+' · <span class="lote-cod">'+esc(d.e.lote)+'</span></small></td>'+
+      '<td>'+(d.ubic?esc(d.ubic):'<span style="color:var(--warn)">Falta</span>')+'</td>'+
+      '<td class="n"><b>'+fmtN(d.stock)+'</b></td>'+
+      '<td class="n"'+(d.dias>DIAS_CRITICO?' style="color:var(--red);font-weight:700"':'')+'>'+(d.dias!=null?d.dias+' d':'—')+(d.e.consumoPref&&d.e.consumoPref<hoy()?'<br><small style="color:var(--red)">vencido</small>':'')+'</td>'+
+      '<td class="n">'+(d.costo!=null?fmtP(d.costo):'—')+'</td>'+
+      '<td class="n">'+(d.precio?fmtP(d.precio)+'<br><small style="color:var(--hint)">neto '+fmtP(neto)+'</small>':'<span style="color:var(--warn)">Falta</span>')+'</td>'+
+      '<td class="n">'+(mg!=null?'<b style="color:'+(mg<0?'var(--red)':'var(--green)')+'">'+fmtP(mg)+'</b><br><small style="color:var(--hint)">'+Math.round(mg/neto*100)+' %</small>':'—')+'</td>'+
+      '<td class="n no-print"><div class="acciones" style="justify-content:flex-end"><button class="btn'+(!d.precio||!d.ubic?' btn-a':'')+'" type="button" data-cved="'+i+'">'+(!d.precio||!d.ubic?'Completar':'Editar')+'</button>'+(d.stock>0?'<button class="btn" type="button" data-cvrt="'+i+'">Salida</button>':'')+'</div></td></tr>';
+  }).join('');
+  $('#cv-print-sub').textContent='Al '+fmtF(hoy());
+  $('#cv-cuerpo').innerHTML='<div class="metricas">'+mets+'</div>'+
+    (falt.length?'<div class="costo-prev no-print" style="margin:0 0 14px">'+(falt.length===1?'1 lote necesita':falt.length+' lotes necesitan')+' ubicación o precio de venta. Toca <b>Completar</b>: solo te pedirá lo que falta.</div>':'')+
+    '<div class="chips no-print">'+chips+'</div>'+
+    (lista.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Cerveza</th><th>Ubicación</th><th class="n">Stock</th><th class="n">Edad</th><th class="n">Costo u.</th><th class="n">Precio u.</th><th class="n">Margen u.</th><th class="no-print"></th></tr></thead><tbody>'+filas+'</tbody></table></div>':
+      '<div class="vacio">'+(cvDatos.length?'No hay lotes con este filtro.':'La cava está vacía. Se llena sola cuando registras un envasado en un batch.')+'</div>')+
+    '<p class="nota">Margen = precio neto − costo por unidad. Neto = bruto ÷ '+String(FACTOR_BRUTO).replace('.',',')+' (IVA 19 % + ILA 20,5 %, SII). Edad = días desde el envasado; sobre '+DIAS_CRITICO+' días se marca en rojo.</p>'+
+    '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Salidas del mes</h3>'+(sal.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Fecha</th><th>Cerveza</th><th>Lote</th><th class="n">Cant.</th><th>Motivo</th></tr></thead><tbody>'+sal.map(function(y){return '<tr><td>'+fmtF(y.x.fecha)+'</td><td>'+esc(y.d.b.nombre||'')+' · '+esc(y.d.k)+'</td><td class="lote-cod">'+esc(y.d.e.lote)+'</td><td class="n">'+fmtN(y.x.cantidad)+'</td><td>'+esc(y.x.motivo||'')+(y.x.comentario?'<br><small style="color:var(--hint)">'+esc(y.x.comentario)+'</small>':'')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="nota">Sin salidas este mes.</p>')+'</div>';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cvf]'),function(c){c.onclick=function(){cvFiltro=c.dataset.cvf;pintarCava()}});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cved]'),function(c){c.onclick=protegido('editar la cava',function(){abrirCvEdit(lista[+c.dataset.cved])})});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cvrt]'),function(c){c.onclick=protegido('registrar una salida de cava',function(){abrirRetiro(lista[+c.dataset.cvrt])})});
+}
+function guardarEnvasado(b,ix,cambios){
+  var arr=(b.envasados||[]).map(function(x,j){return j===ix?Object.assign({},x,cambios):x});
+  return api.actualizarBatch(b.id,{envasados:arr}).then(function(){b.envasados=arr});
+}
+function abrirCvEdit(d){
+  cvSel=d;var e=d.e,c=e.cava||{},ub=c.ubicacion||ultimaUbic();
+  $('#cv-titulo').textContent=(!c.ubicacion||!(c.precios&&c.precios[d.k]))?'Completar datos de cava':'Editar datos de cava';
+  $('#cv-sub').textContent=(d.b.nombre||'')+' · lote '+e.lote+' · '+Object.keys(e.unidades||{}).join(', ');
+  var ops=UBICACIONES.slice();if(ub&&ops.indexOf(ub)<0)ops.push(ub);
+  $('#cv-ubic').innerHTML='<option value="">— elige —</option>'+ops.map(function(o){return '<option'+(o===ub?' selected':'')+'>'+esc(o)+'</option>'}).join('')+'<option value="__otra">Otra…</option>';
+  $('#cv-ubic-otra-box').hidden=true;$('#cv-ubic-otra').value='';
+  var cus={};cvDatos.forEach(function(x){if(x.e===e)cus[x.k]=x.costo});
+  $('#cv-precios').innerHTML=Object.keys(e.unidades||{}).map(function(k,i){var pv=(c.precios&&num(c.precios[k]))||ultimoPrecio(d.b.nombre,k)||'';
+    return '<div class="campo"><label for="cv-p'+i+'">Precio de venta bruto · '+esc(k)+'</label><input id="cv-p'+i+'" data-pfmt="'+esc(k)+'" data-costo="'+(cus[k]!=null?cus[k]:'')+'" type="number" min="0" step="1" inputmode="numeric" value="'+pv+'"><small class="nota" data-pprev></small></div>'}).join('');
+  prevPrecios();$('#cv-err').hidden=true;$('#dlg-cv').showModal();
+  var foco=!$('#cv-ubic').value?$('#cv-ubic'):Array.prototype.find.call(document.querySelectorAll('#cv-precios input'),function(x){return !x.value});if(foco)setTimeout(function(){foco.focus()},50);
+}
+function prevPrecios(){Array.prototype.forEach.call(document.querySelectorAll('#cv-precios input'),function(el){var p=num(el.value),c=el.dataset.costo===''?null:num(el.dataset.costo),sm=el.parentNode.querySelector('[data-pprev]');
+  if(!p){sm.textContent=c!=null?'Costo por unidad: '+fmtP(c):'';return}var n=netoDe(p);
+  sm.innerHTML='Neto '+fmtP(n)+' · IVA '+fmtP(n*IMP_IVA)+' · ILA '+fmtP(n*IMP_ILA)+(c!=null?' · <b>margen '+fmtP(n-c)+' ('+Math.round((n-c)/n*100)+' %)</b>':'')})}
+$('#cv-precios').addEventListener('input',prevPrecios);
+$('#cv-ubic').addEventListener('change',function(){$('#cv-ubic-otra-box').hidden=this.value!=='__otra';if(this.value==='__otra')$('#cv-ubic-otra').focus()});
+$('#cv-cancelar').addEventListener('click',function(){$('#dlg-cv').close()});
+$('#form-cv').addEventListener('submit',function(ev){
+  ev.preventDefault();var d=cvSel,err=$('#cv-err');err.hidden=true;
+  var ub=$('#cv-ubic').value==='__otra'?$('#cv-ubic-otra').value.trim():$('#cv-ubic').value;
+  var pr={};Array.prototype.forEach.call(document.querySelectorAll('#cv-precios input'),function(el){var v=num(el.value);if(v>0)pr[el.dataset.pfmt]=v});
+  $('#cv-ok').disabled=true;
+  guardarEnvasado(d.b,d.ix,{cava:{ubicacion:ub,precios:pr}}).then(function(){$('#cv-ok').disabled=false;$('#dlg-cv').close();toast('Datos de cava guardados');abrirCava()})
+  .catch(function(){$('#cv-ok').disabled=false;err.textContent='No se pudo guardar. Revisa tu conexión.';err.hidden=false});
+});
+function abrirRetiro(d){cvSel=d;$('#rt-sub').textContent=(d.b.nombre||'')+' · '+d.k+' · lote '+d.e.lote+' · disponibles: '+fmtN(d.stock);$('#rt-cant').value='';$('#rt-fecha').value=hoy();$('#rt-motivo').selectedIndex=0;$('#rt-com').value='';$('#rt-err').hidden=true;$('#rt-ok').disabled=false;$('#dlg-rt').showModal();setTimeout(function(){$('#rt-cant').focus()},50)}
+$('#rt-cancelar').addEventListener('click',function(){$('#dlg-rt').close()});
+$('#form-rt').addEventListener('submit',function(ev){
+  ev.preventDefault();var d=cvSel,err=$('#rt-err'),q=Math.round(num($('#rt-cant').value)),f=$('#rt-fecha').value;err.hidden=true;
+  if(!(q>0)){err.textContent='Escribe una cantidad mayor a 0.';err.hidden=false;return}
+  if(q>d.stock){err.textContent='Solo quedan '+fmtN(d.stock)+' unidades de este lote.';err.hidden=false;return}
+  if(!f||f>hoy()){err.textContent='Revisa la fecha: no puede estar vacía ni ser futura.';err.hidden=false;return}
+  if(f<d.e.fecha){err.textContent='La fecha no puede ser anterior al envasado ('+fmtF(d.e.fecha)+').';err.hidden=false;return}
+  $('#rt-ok').disabled=true;
+  var x={id:'s'+Date.now(),fecha:f,fmt:d.k,cantidad:q,motivo:$('#rt-motivo').value,comentario:$('#rt-com').value.trim()};
+  guardarEnvasado(d.b,d.ix,{salidas:(d.e.salidas||[]).concat([x])}).then(function(){$('#dlg-rt').close();toast('Salida registrada');abrirCava()})
+  .catch(function(){$('#rt-ok').disabled=false;err.textContent='No se pudo guardar. Revisa tu conexión.';err.hidden=false});
+});
+$('#b-cava').addEventListener('click',function(){cvFiltro='todos';abrirCava()});
+$('#cv-imprimir').addEventListener('click',function(){window.print()});
+
 /* ---------- Envasado y lote ---------- */
 var batchTab='costos',envBatch=null;
 function numBatch(b){var m=String(b.codigo||'').match(/\d+/);return m?String(parseInt(m[0],10)).padStart(2,'0'):'XX'}
@@ -1183,7 +1327,7 @@ function abrirEnvasado(b){
   $('#env-fecha').value=hoy();$('#env-pref').value='';
   var fs=Object.keys(ENVASES);
   $('#env-fmts').innerHTML='<div class="grid">'+fs.map(function(k,i){return '<div><label for="env-f'+i+'">'+esc(k)+'</label><input id="env-f'+i+'" data-fmt="'+esc(k)+'" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>'}).join('')+'</div>';
-  pintarPiezas();$('#dlg-env').showModal();
+  $('#env-cava').innerHTML='';pintarPiezas();$('#dlg-env').showModal();
 }
 function unidadesEnv(){var u={};Array.prototype.forEach.call(document.querySelectorAll('#env-fmts [data-fmt]'),function(el){var n=Math.round(num(el.value));if(n>0)u[el.dataset.fmt]=n});return u}
 function pintarPiezas(){
@@ -1201,6 +1345,10 @@ function pintarPiezas(){
     var o3=opcionesPieza(function(i){return i.tipo==='Etiquetas'},m?m.id:null);
     filas.push({id:'p'+filas.length,label:'Etiquetas',op:o3,q:nBot+nLata,falta:o3.hay?'':'No tienes etiquetas registradas en bodega.'});
   }
+  var prevC={};Array.prototype.forEach.call(document.querySelectorAll('#env-cava [data-epfmt]'),function(el){prevC[el.dataset.epfmt]=el.value});
+  var ubAct=$('#env-ubic')?$('#env-ubic').value:ultimaUbic(),ops=UBICACIONES.slice();if(ubAct&&ops.indexOf(ubAct)<0)ops.push(ubAct);
+  $('#env-cava').innerHTML=Object.keys(u).length?'<div class="campo"><label for="env-ubic">Ubicación</label><select id="env-ubic"><option value="">— elige —</option>'+ops.map(function(o){return '<option'+(o===ubAct?' selected':'')+'>'+esc(o)+'</option>'}).join('')+'</select></div><div class="grid">'+
+    Object.keys(u).map(function(k,i){var v=prevC[k]!=null?prevC[k]:(ultimoPrecio(b.nombre,k)||'');return '<div><label for="env-p'+i+'">Precio bruto · '+esc(k)+'</label><input id="env-p'+i+'" data-epfmt="'+esc(k)+'" type="number" min="0" step="1" inputmode="numeric" placeholder="se puede dejar para después" value="'+v+'"></div>'}).join('')+'</div>':'<p class="nota">Escribe arriba cuántas unidades llenaste.</p>';
   $('#env-piezas').innerHTML=filas.length?filas.map(function(f){return '<div class="env-fila" data-pieza><div><label for="'+f.id+'-i">'+esc(f.label)+'</label><select id="'+f.id+'-i" data-i>'+f.op.html+'</select></div><div><label for="'+f.id+'-q">Cantidad</label><input id="'+f.id+'-q" data-q type="number" min="0" step="1" inputmode="numeric" value="'+f.q+'"></div>'+(f.falta?'<small style="color:var(--warn)">⚠️ '+esc(f.falta)+'</small>':'')+'</div>'}).join(''):'<p class="nota">Escribe arriba cuántas unidades llenaste.</p>';
   revisarEnvasado();
 }
@@ -1232,7 +1380,8 @@ $('#form-env').addEventListener('submit',function(e){
   ps.reduce(function(pr,p){return pr.then(function(){return api.mover(p.idInsumo,-p.cantidad,extra).then(function(){hechos.push({idInsumo:p.idInsumo,nombre:p.nombre,cantidad:p.cantidad})})})},Promise.resolve())
   .then(function(){return false},function(){return true})
   .then(function(fallo){
-    var reg={lote:lote,fecha:fecha,consumoPref:pref,unidades:u,piezas:hechos,creado:hoy()};if(fallo)reg.incompleto=true;
+    var pr={};Array.prototype.forEach.call(document.querySelectorAll('#env-cava [data-epfmt]'),function(el){var v=num(el.value);if(v>0)pr[el.dataset.epfmt]=v});
+    var reg={lote:lote,fecha:fecha,consumoPref:pref,unidades:u,piezas:hechos,creado:hoy(),cava:{ubicacion:$('#env-ubic')?$('#env-ubic').value:'',precios:pr},salidas:[]};if(fallo)reg.incompleto=true;
     return api.actualizarBatch(b.id,{envasados:(b.envasados||[]).concat([reg])}).then(function(){
       $('#dlg-env').close();
       if(fallo)alert('El lote '+lote+' quedó registrado, pero no se pudieron descontar todas las piezas. Revisa el stock de: '+ps.filter(function(p){return !hechos.some(function(h){return h.idInsumo===p.idInsumo})}).map(function(p){return p.nombre}).join(', ')+'.');
