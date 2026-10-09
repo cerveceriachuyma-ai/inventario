@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.9</title>
+<title>Chuyma Bodega · v3.10</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -214,6 +214,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
      </div>
      <div id="f-cantidad-nota" class="costo-prev" hidden><span id="f-cantidad-txt"></span> <button type="button" class="btn" id="f-cantidad-usar" style="margin-top:8px" hidden></button></div>
      <div id="f-costo-prev" class="costo-prev" hidden></div>
+     <div style="margin-top:12px"><label for="f-notacompra">Notas de la compra</label><textarea id="f-notacompra" rows="2" placeholder="Ej.: comprado en oferta; precio normal ≈ $350 c/u"></textarea></div>
     </fieldset>
     <fieldset>
      <legend>Control</legend>
@@ -366,7 +367,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.9";
+var APP_VERSION = "v3.10";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -658,6 +659,7 @@ function pintarPerfil(id,cargarHist){
   if(c&&it[c.d[0]])mets+='<div class="met"><span>'+c.d[1]+'</span><b>'+esc(it[c.d[0]])+esc(c.d[2])+'</b></div>';
   if(it.fechaIngreso){var db=dias(it.fechaIngreso,hoy());mets+='<div class="met"><span>En bodega</span><b>'+db+' días</b>'+(num(it.diasCriticos)?'<small>Vida útil '+fmtN(it.diasCriticos)+' días</small>':'')+'</div>'}
   var dt=[['Proveedor',esc(it.proveedor||'—')],['Documento',esc((it.tipoDocumento||'')+' '+(it.documentoCompra||'')).trim()||'—'],['Total pagado',it.precioTotal?fmtP(num(it.precioTotal)):'Sin precio'],['Cantidad comprada',it.cantidadComprada?fmtN(it.cantidadComprada)+' '+esc(u):'—'],['Ingreso',fmtF(it.fechaIngreso)],['Vencimiento',fmtF(venc(it))]];
+  if(it.notaCompra)dt.push(['Notas de la compra','<span style="white-space:pre-line">'+esc(it.notaCompra)+'</span>']);
   if(c)c.f.forEach(function(f){if(f[0]!==c.d[0]&&it[f[0]])dt.push([f[1],f[2]==='date'?fmtF(it[f[0]]):esc(it[f[0]])])});
   $('#v-perfil').innerHTML=
     '<div class="cab"><div><button type="button" class="btn-link" data-volver>Volver</button><h2>'+esc(it.nombre)+'</h2><p class="sub">'+esc(catN(it.categoria))+' · Lote '+esc(it.lote||'S/L')+' · <span class="mono">'+esc(it.codigoUnico||'Sin código')+'</span></p></div>'+
@@ -822,7 +824,7 @@ function abrirForm(id){
   var d=it||{categoria:cat!=='todas'?cat:'malta',unidadMedida:'kg',tipoDocumento:'Factura',fechaIngreso:hoy()};
   sel.value=CATS[d.categoria]?d.categoria:'malta';
   $('#f-nombre').value=d.nombre||'';$('#f-lote').value=(d.lote&&d.lote!=='S/L')?d.lote:'';$('#f-codigo').value=d.codigoUnico||'';
-  $('#f-proveedor').value=d.proveedor||'';$('#f-tipodoc').value=d.tipoDocumento==='Boleta'?'Boleta':'Factura';$('#f-ndoc').value=d.documentoCompra||'';
+  $('#f-proveedor').value=d.proveedor||'';$('#f-tipodoc').value=d.tipoDocumento==='Boleta'?'Boleta':'Factura';$('#f-ndoc').value=d.documentoCompra||'';$('#f-notacompra').value=d.notaCompra||'';
   $('#f-fecha').value=d.fechaIngreso||'';$('#f-unidad').value=UNI[d.unidadMedida]!=null?d.unidadMedida:'kg';
   $('#f-precio').value=d.precioTotal||'';
   $('#f-cantidad').value=d.cantidadComprada||'';$('#f-cantidad-nota').hidden=true;
@@ -856,7 +858,7 @@ $('#form-insumo').addEventListener('submit',function(e){
   var nombre=$('#f-nombre').value.trim(),c=sel.value,cant=num($('#f-cantidad').value);
   if(!nombre){err.textContent='Escribe el nombre del insumo.';err.hidden=false;$('#f-nombre').focus();return}
   if(!actual&&!(cant>0)){err.textContent='Escribe la cantidad comprada. Será el stock inicial.';err.hidden=false;$('#f-cantidad').focus();return}
-  var p={categoria:c,nombre:nombre,lote:$('#f-lote').value.trim()||'S/L',proveedor:$('#f-proveedor').value.trim(),tipoDocumento:$('#f-tipodoc').value,documentoCompra:$('#f-ndoc').value.trim(),fechaIngreso:$('#f-fecha').value,unidadMedida:$('#f-unidad').value,cantidadComprada:cant,precioTotal:num($('#f-precio').value),minimo:num($('#f-minimo').value),fechaVencimiento:$('#f-venc').value,diasCriticos:num($('#f-dias').value)};
+  var p={categoria:c,nombre:nombre,lote:$('#f-lote').value.trim()||'S/L',proveedor:$('#f-proveedor').value.trim(),tipoDocumento:$('#f-tipodoc').value,documentoCompra:$('#f-ndoc').value.trim(),notaCompra:$('#f-notacompra').value.trim(),fechaIngreso:$('#f-fecha').value,unidadMedida:$('#f-unidad').value,cantidadComprada:cant,precioTotal:num($('#f-precio').value),minimo:num($('#f-minimo').value),fechaVencimiento:$('#f-venc').value,diasCriticos:num($('#f-dias').value)};
   if(c==='laboratorio')p.fechaExpiracion=p.fechaVencimiento;
   p.requiereSDS=$('#f-sds').checked;
   (CATS[c]?CATS[c].f:[]).forEach(function(f){var el=$('#fd-'+f[0]);if(el)p[f[0]]=el.value.trim()});
