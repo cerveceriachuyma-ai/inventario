@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.6</title>
+<title>Chuyma Bodega · v3.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -329,7 +329,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.6";
+var APP_VERSION = "v3.7";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -377,6 +377,7 @@ function catN(c){return CATS[c]?CATS[c].u:(c||'Sin categoría')}
 function venc(it){return it.fechaVencimiento||it.fechaExpiracion||''}
 function costoReal(it){var p=num(it.precioTotal);if(!p)return null;return it.tipoDocumento==='Factura'?p/IVA:p}
 function costoUnit(it){var c=costoReal(it),q=num(it.cantidadComprada);if(c==null||!q||it.unidadMedida==='ninguno')return null;return c/q}
+function faltaCantidad(it){return num(it.precioTotal)>0&&!num(it.cantidadComprada)&&it.unidadMedida!=='ninguno'}
 function tipoMov(m){return m.tipo||'consumo'}
 function deltaMov(m){return m.delta!=null?num(m.delta):-num(m.cantidadUsada)}
 function toast(t){var el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){el.hidden=true},3500)}
@@ -389,6 +390,7 @@ function alertasDe(it){
   if(v){var dv=dias(h,v);if(dv!=null){if(dv<0)a.push(['danger','Vencido']);else if(dv<=30)a.push(['warn',dv===0?'Vence hoy':'Vence en '+dv+' días'])}}
   if(it.fechaIngreso&&num(it.diasCriticos)>0){var db=dias(it.fechaIngreso,h);if(db!=null){if(db>num(it.diasCriticos))a.push(['danger','Excedió vida útil']);else if(num(it.diasCriticos)-db<=15)a.push(['warn','Vida útil por terminar'])}}
   if(necesitaSDS(it)&&!docs(it).some(function(d){return d.tipo===SDS}))a.push(['warn','Falta hoja de seguridad']);
+  if(faltaCantidad(it))a.push(['warn','Falta cantidad comprada']);
   return a;
 }
 
@@ -598,7 +600,7 @@ function pintarPerfil(id,cargarHist){
   var c=CATS[it.categoria],a=alertasDe(it),u=uni(it),cu=costoUnit(it),cr=costoReal(it);
   var bajo=a.some(function(x){return x[1]==='Stock bajo'});
   var mets='<div class="met"><span>Stock</span><b class="'+(bajo?'rojo':'')+'">'+fmtN(it.stock)+' '+esc(u)+'</b>'+(num(it.minimo)?'<small>Mínimo '+fmtN(it.minimo)+' '+esc(u)+'</small>':'')+'</div>';
-  mets+='<div class="met"><span>Costo por '+esc(u||'compra')+'</span><b>'+(cu!=null?fmtPu(cu):(cr!=null?fmtP(cr):'Sin precio'))+'</b>'+(cr!=null?'<small>'+(it.tipoDocumento==='Factura'?'Neto, sin IVA':'Con IVA (boleta)')+'</small>':'')+'</div>';
+  mets+='<div class="met"><span>Costo por '+esc(u||'compra')+'</span><b>'+(cu!=null?fmtPu(cu):(faltaCantidad(it)?'Falta cantidad':(cr!=null?fmtP(cr):'Sin precio')))+'</b>'+(faltaCantidad(it)?'<small>Escribe la cantidad comprada en "Editar" para calcular el costo por '+esc(u||'unidad')+'</small>':(cr!=null?'<small>'+(it.tipoDocumento==='Factura'?'Neto, sin IVA':'Con IVA (boleta)')+'</small>':''))+'</div>';
   if(c&&it[c.d[0]])mets+='<div class="met"><span>'+c.d[1]+'</span><b>'+esc(it[c.d[0]])+esc(c.d[2])+'</b></div>';
   if(it.fechaIngreso){var db=dias(it.fechaIngreso,hoy());mets+='<div class="met"><span>En bodega</span><b>'+db+' días</b>'+(num(it.diasCriticos)?'<small>Vida útil '+fmtN(it.diasCriticos)+' días</small>':'')+'</div>'}
   var dt=[['Proveedor',esc(it.proveedor||'—')],['Documento',esc((it.tipoDocumento||'')+' '+(it.documentoCompra||'')).trim()||'—'],['Total pagado',it.precioTotal?fmtP(num(it.precioTotal)):'Sin precio'],['Cantidad comprada',it.cantidadComprada?fmtN(it.cantidadComprada)+' '+esc(u):'—'],['Ingreso',fmtF(it.fechaIngreso)],['Vencimiento',fmtF(venc(it))]];
@@ -636,16 +638,24 @@ function cargarHistorial(id){
 }
 
 /* ---------- Recalcular costos ---------- */
+function datosCosto(m,cu){return {costoUnitario:cu,costoTotal:cu*num(m.cantidadUsada),costoCorregido:hoy()}}
+function sinCostoMov(m){return m.costoUnitario==null||m.costoTotal==null}
 function recalcularCostos(it){
   var cu=costoUnit(it),u=uni(it);
-  if(cu==null){alert('Este insumo no tiene precio o cantidad comprada. Agrégalos en "Editar" antes de recalcular.');return}
+  if(cu==null){alert(faltaCantidad(it)?'A este insumo le falta la cantidad comprada. Escríbela en "Editar" y vuelve a intentarlo.':'Este insumo no tiene precio o cantidad comprada. Agrégalos en "Editar" antes de recalcular.');return}
   api.movDe(it.id).then(function(ms){
-    var cambios=ms.filter(function(m){return m.costoUnitario==null||Math.abs(num(m.costoUnitario)-cu)>0.0001}).map(function(m){
-      return {id:m.id,datos:{costoUnitario:cu,costoTotal:cu*num(m.cantidadUsada),costoCorregido:hoy()}};
-    });
-    if(!cambios.length){toast('Todos los costos ya están correctos.');return}
-    if(!confirm('Se recalcularán '+cambios.length+(cambios.length===1?' movimiento':' movimientos')+' con el costo actual: '+fmtPu(cu)+' por '+(u||'unidad')+'.\n\nLa cantidad, fecha y batch no cambian. ¿Continuar?'))return;
-    return api.recalcular(cambios).then(function(){toast('Costos recalculados');cargarHistorial(it.id)});
+    var vacios=ms.filter(sinCostoMov);
+    var distintos=ms.filter(function(m){return !sinCostoMov(m)&&Math.abs(num(m.costoUnitario)-cu)>0.0001});
+    var cambios=[];
+    if(vacios.length){
+      if(!confirm(vacios.length+(vacios.length===1?' movimiento no tiene':' movimientos no tienen')+' precio.\n\nSe les asignará el costo actual: '+fmtPu(cu)+' por '+(u||'unidad')+'.\nLos movimientos que ya tienen precio NO se tocan. ¿Continuar?'))return;
+      cambios=vacios.map(function(m){return {id:m.id,datos:datosCosto(m,cu)}});
+    }
+    if(distintos.length&&confirm('Además, '+distintos.length+(distintos.length===1?' movimiento tiene':' movimientos tienen')+' un precio distinto, probablemente de una compra anterior.\n\nNormalmente se dejan como están. ¿Quieres REEMPLAZARLOS también por '+fmtPu(cu)+' por '+(u||'unidad')+'?\n\nAprieta "Cancelar" para dejarlos como están.')){
+      cambios=cambios.concat(distintos.map(function(m){return {id:m.id,datos:datosCosto(m,cu)}}));
+    }
+    if(!cambios.length){toast(vacios.length||distintos.length?'No se cambió ningún costo.':'Todos los costos ya están correctos.');return}
+    return api.recalcular(cambios).then(function(){toast(cambios.length===1?'1 costo actualizado':cambios.length+' costos actualizados');cargarHistorial(it.id)});
   }).catch(function(){toast('No se pudo recalcular. Revisa tu conexión y la regla de "consumos".')});
 }
 
@@ -769,7 +779,7 @@ $('#form-insumo').addEventListener('submit',function(e){
   p.costoUnitario=costoUnit(p);
   $('#f-guardar').disabled=true;
   var prom;
-  if(actual){prom=api.actualizar(actual,p).then(function(){return actual})}
+  if(actual){prom=api.actualizar(actual,p).then(function(){return rellenarVacios(actual,p.costoUnitario,uni(p))})}
   else{
     p.stock=cant;p.codigoUnico=prefijo(nombre)+'-'+Math.floor(10000+Math.random()*90000);
     prom=api.crear(p,{nombreInsumo:nombre,loteInsumo:p.lote,codigoUnicoInsumo:p.codigoUnico,tipo:'ingreso',cantidadUsada:cant,delta:cant,unidadMedida:p.unidadMedida,fechaConsumo:p.fechaIngreso||hoy(),loteBrewfather:'',nota:'Ingreso inicial',costoUnitario:p.costoUnitario,costoTotal:p.costoUnitario!=null?p.costoUnitario*cant:null});
@@ -777,6 +787,15 @@ $('#form-insumo').addEventListener('submit',function(e){
   prom.then(function(id){$('#f-guardar').disabled=false;toast('Insumo guardado');setTimeout(function(){abrirPerfil(id)},150)})
   .catch(function(){$('#f-guardar').disabled=false;err.textContent='No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.';err.hidden=false});
 });
+function rellenarVacios(id,cu,u){
+  if(cu==null)return Promise.resolve(id);
+  return api.movDe(id).then(function(ms){
+    var vacios=ms.filter(sinCostoMov);
+    if(!vacios.length)return id;
+    if(!confirm('Este insumo tiene '+vacios.length+(vacios.length===1?' consumo':' consumos')+' sin precio (registrados antes de que tuviera precio).\n\n¿Les asigno el costo que acabas de guardar: '+fmtPu(cu)+' por '+(u||'unidad')+'?\nLos que ya tienen precio no se tocan.'))return id;
+    return api.recalcular(vacios.map(function(m){return {id:m.id,datos:datosCosto(m,cu)}})).then(function(){toast(vacios.length===1?'Insumo guardado y 1 costo completado':'Insumo guardado y '+vacios.length+' costos completados');return id});
+  }).catch(function(){toast('Insumo guardado, pero no se pudieron completar los costos antiguos. Usa "Recalcular costos" en la ficha.');return id});
+}
 $('#f-eliminar').addEventListener('click',protegido('eliminar este insumo',function(){
   var it=inv.find(function(i){return i.id===actual});if(!it)return;
   if(!confirm('¿Eliminar "'+it.nombre+'" de la bodega?'))return;
