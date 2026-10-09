@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.7</title>
+<title>Chuyma Bodega · v3.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -28,6 +28,8 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 0 4px}
 .btn:hover{background:var(--soft)}
 .btn-p{background:var(--amber);border-color:var(--amber);color:#fff}
 .btn-p:hover{background:var(--amber-d)}
+.btn-a{background:var(--amber-t);border:2px solid var(--amber);color:var(--amber-d);font-weight:700}
+.btn-a:hover{background:#F6E2C2}
 .btn-x{color:var(--red);border-color:#F2C9C4}
 .btn-x:hover{background:var(--red-t)}
 .btn-link{border:0;background:none;padding:6px 0;color:var(--muted);font-weight:500;min-height:0}
@@ -329,7 +331,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.7";
+var APP_VERSION = "v3.8";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -613,7 +615,7 @@ function pintarPerfil(id,cargarHist){
     '<dl class="datos">'+dt.map(function(d){return '<dt>'+d[0]+'</dt><dd>'+d[1]+'</dd>'}).join('')+'</dl>'+
     '<div class="bloque"><div class="sec"><h3>Documentos</h3><button class="btn" type="button" id="p-doc">Agregar documento</button></div>'+
     (docs(it).length?docs(it).map(function(d){return '<div class="doc"><div>'+esc(d.tipo)+'<small>'+esc(d.nombre||'Sin nombre')+' · '+fmtF(d.fecha)+'</small></div><div class="acciones"><a class="btn" href="'+esc(d.url)+'" target="_blank" rel="noopener">Abrir</a><button class="btn btn-link" type="button" data-quitar="'+esc(d.id)+'">Quitar</button></div></div>'}).join(''):'<p class="nota">Sin documentos. Agrega la ficha técnica'+(necesitaSDS(it)?' y la hoja de seguridad':'')+' de esta compra.</p>')+'</div>'+
-    '<div class="sec"><h3>Historial</h3><div class="acciones"><button class="btn" type="button" id="p-recalc">Recalcular costos</button><button class="btn" type="button" id="p-ajuste">Ajustar stock</button><button class="btn btn-p" type="button" id="p-uso">Registrar uso</button></div></div>'+
+    '<div class="sec"><h3>Historial</h3><div class="acciones"><button class="btn btn-a" type="button" id="p-recalc">Recalcular costos</button><button class="btn" type="button" id="p-ajuste">Ajustar stock</button><button class="btn btn-p" type="button" id="p-uso">Registrar uso</button></div></div>'+
     '<div id="p-hist">'+(cargarHist?'<p class="nota">Cargando historial…</p>':(pintarPerfil._h||''))+'</div>';
   $('#p-editar').onclick=protegido('editar este insumo',function(){abrirForm(id)});
   $('#p-etiqueta').onclick=function(){abrirEtiqueta(it)};
@@ -636,6 +638,36 @@ function cargarHistorial(id){
     pintarPerfil._h=h;var box=$('#p-hist');if(box)box.innerHTML=h;
   }).catch(function(){var box=$('#p-hist');if(box)box.innerHTML='<p class="err">No se pudo cargar el historial. Revisa tu conexión y las reglas de "consumos".</p>'});
 }
+
+/* ---------- Completar costos faltantes (todos los insumos) ---------- */
+var BTN_COMPLETAR='<p class="no-print" style="margin-top:8px"><button class="btn btn-a" type="button" data-completar>Completar costos faltantes</button></p>';
+function completarCostosFaltantes(){
+  api.movTodos().then(function(ms){
+    var vacios=ms.filter(sinCostoMov),grupos={},sinId=0;
+    vacios.forEach(function(m){if(!m.idInsumo){sinId++;return}(grupos[m.idInsumo]=grupos[m.idInsumo]||[]).push(m)});
+    var cambios=[],ok=[],no=[];
+    Object.keys(grupos).forEach(function(id){
+      var it=inv.find(function(i){return i.id===id}),g=grupos[id];
+      var cu=it?costoUnit(it):null;
+      if(cu==null){no.push((it?it.nombre:(g[0].nombreInsumo||'Insumo eliminado'))+' ('+g.length+')'+(it?(faltaCantidad(it)?': falta cantidad comprada':': falta precio'):': ya no existe'));return}
+      ok.push(it.nombre+' ('+g.length+')');
+      g.forEach(function(m){cambios.push({id:m.id,datos:datosCosto(m,cu)})});
+    });
+    if(!vacios.length){toast('Todos los consumos ya tienen costo.');return}
+    var txt='';
+    if(cambios.length)txt+=(cambios.length===1?'Se completará 1 consumo':'Se completarán '+cambios.length+' consumos')+' con el costo actual de cada insumo:\n• '+ok.join('\n• ')+'\n\n';
+    if(no.length)txt+='No se pueden completar (arréglalos en "Editar"):\n• '+no.join('\n• ')+'\n\n';
+    if(sinId)txt+=sinId+(sinId===1?' consumo antiguo no está ligado':' consumos antiguos no están ligados')+' a ningún insumo y no se pueden completar.\n\n';
+    if(!cambios.length){alert(txt.trim());return}
+    if(!confirm(txt+'Los consumos que ya tienen costo NO se tocan. ¿Continuar?'))return;
+    var lotes=[];for(var i=0;i<cambios.length;i+=400)lotes.push(cambios.slice(i,i+400));
+    return lotes.reduce(function(pr,l){return pr.then(function(){return api.recalcular(l)})},Promise.resolve()).then(function(){
+      toast(cambios.length===1?'1 costo completado':cambios.length+' costos completados');
+      if(vista==='informe')cargarInforme();else if(vista==='batch'&&typeof batchActual!=='undefined'&&batchActual)abrirBatch(batchActual);
+    });
+  }).catch(function(){toast('No se pudieron completar los costos. Revisa tu conexión y la regla de "consumos".')});
+}
+document.addEventListener('click',function(e){if(e.target.closest('[data-completar]'))protegido('completar los costos faltantes',completarCostosFaltantes)()});
 
 /* ---------- Recalcular costos ---------- */
 function datosCosto(m,cu){return {costoUnitario:cu,costoTotal:cu*num(m.cantidadUsada),costoCorregido:hoy()}}
@@ -975,7 +1007,7 @@ function pintarBatch(b,ms){
     '<div class="metricas">'+mets+'</div>'+
     (env.length&&cpl!=null?'<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costo por envase</h3><div class="scroll"><table class="tabla"><tbody>'+env.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="n">'+fmtP(cpl*ENVASES[k]/1000)+'</td></tr>'}).join('')+'</tbody></table></div><p class="nota">Promedio por volumen. Incluye todos los insumos del batch, también envases y tapas si los registraste.</p></div>':'')+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Insumos utilizados</h3>'+(ms.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Insumo</th><th class="n">Cantidad</th><th class="n">Costo</th></tr></thead><tbody>'+filas+'<tr class="tot"><td colspan="2">Total insumos</td><td class="n">'+fmtP(totIns)+'</td></tr></tbody></table></div>':'<p class="nota">Este batch todavía no tiene consumos registrados.</p>')+
-    (sinCosto?'<p class="nota">* '+sinCosto+(sinCosto===1?' insumo no tenía':' insumos no tenían')+' precio al momento del uso. El costo real es mayor que el mostrado.</p>':'')+'</div>'+
+    (sinCosto?'<p class="nota">* '+sinCosto+(sinCosto===1?' insumo no tenía':' insumos no tenían')+' precio al momento del uso. El costo real es mayor que el mostrado.</p>'+BTN_COMPLETAR:'')+'</div>'+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costos adicionales</h3>'+(adic.length?'<div class="scroll"><table class="tabla"><tbody>'+adic.map(function(a){return '<tr><td>'+esc(a.concepto)+'</td><td class="n">'+fmtP(num(a.monto))+'</td></tr>'}).join('')+'<tr class="tot"><td>Total adicionales</td><td class="n">'+fmtP(totAd)+'</td></tr></tbody></table></div>':'<p class="nota">Sin costos adicionales. Agrega gas, luz, agua y mano de obra en "Editar" para tener el costo real.</p>')+'</div>'+
     (b.nota?'<p><b>Nota:</b> '+esc(b.nota)+'</p>':'');
   $('#bt-editar').onclick=protegido('editar este batch',function(){abrirBatchForm(b.id)});
@@ -1029,7 +1061,7 @@ function pintarInforme(){
     '<div class="totales"><div><h3 style="margin:0 0 6px;font-size:16px">Costo por batch</h3><div class="scroll"><table class="tabla"><tbody>'+tb+'</tbody></table></div></div>'+
     '<div><h3 style="margin:0 0 6px;font-size:16px">Total por insumo</h3><div class="scroll"><table class="tabla"><tbody>'+ti+'</tbody></table></div></div></div>'+
     '<p style="font-weight:700">'+ds.length+(ds.length===1?' registro':' registros')+' · Costo total '+fmtP(total)+'</p>'+
-    (sinCosto?'<p class="nota">* '+sinCosto+(sinCosto===1?' consumo no tiene':' consumos no tienen')+' costo porque el insumo no tenía precio al momento del uso.</p>':'');
+    (sinCosto?'<p class="nota">* '+sinCosto+(sinCosto===1?' consumo no tiene':' consumos no tienen')+' costo porque el insumo no tenía precio al momento del uso.</p>'+BTN_COMPLETAR:'');
 }
 $('#i-imprimir').addEventListener('click',function(){window.print()});
 
