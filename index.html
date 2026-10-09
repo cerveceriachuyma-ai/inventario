@@ -182,6 +182,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
     <button class="btn" id="b-scan-cerrar" type="button" style="width:100%;margin-top:8px">Cerrar cámara</button>
    </div>
    <div class="chips" id="chips" role="tablist"></div>
+   <div id="pendientes"></div>
    <div class="lista" id="lista"></div>
   </section>
 
@@ -641,10 +642,34 @@ function pintarLista(){
 }
 $('#lista').addEventListener('click',function(e){var f=e.target.closest('[data-id]');if(f)abrirPerfil(f.dataset.id)});
 
+/* ---------- Insumos preparados para registrar (una vez) ---------- */
+var PENDIENTES=[
+  {nombre:'Botella 330 mL',variable:'330 mL',proveedor:'Cristalerías Toro',cantidadComprada:30,precioTotal:6990,minimo:30,notaCompra:'Precio $233 c/u (se compra en paquetes de 30). Stock provisorio: contar las botellas reales y ajustar.'},
+  {nombre:'Botella 500 mL',variable:'500 mL',proveedor:'Prost',cantidadComprada:65,precioTotal:21700,minimo:20,notaCompra:'Compra de 65 botellas, $334 c/u. Stock provisorio: contar las botellas reales y ajustar.'},
+  {nombre:'Botella 1 L',variable:'1 L',proveedor:'HST Tienda',cantidadComprada:112,precioTotal:28000,minimo:0,notaCompra:'Comprada en oferta a $250 c/u (boleta). Precio normal: $857 c/u con boleta. Reservadas para edición aniversario.'}
+];
+function pendientesFaltan(){return PENDIENTES.filter(function(x){return !inv.some(function(i){return String(i.nombre||'').trim().toLowerCase()===x.nombre.toLowerCase()})})}
+function pintarPendientes(){
+  var f=pendientesFaltan(),box=$('#pendientes');if(!box)return;
+  box.innerHTML=f.length?'<div class="costo-prev" style="margin:0 0 12px"><b>'+(f.length===1?'1 insumo preparado':f.length+' insumos preparados')+' para registrar:</b> '+f.map(function(x){return esc(x.nombre)}).join(', ')+'.<br><button class="btn btn-a" type="button" id="b-pendientes" style="margin-top:8px">Revisar y registrar</button></div>':'';
+  if(f.length)$('#b-pendientes').onclick=protegido('registrar los insumos preparados',registrarPendientes);
+}
+function registrarPendientes(){
+  var f=pendientesFaltan();if(!f.length)return;
+  var txt='Se registrarán estos insumos (Secos y gas · Botellas · unidades · Boleta):\n\n'+f.map(function(x){return '• '+x.nombre+' — '+x.proveedor+'\n   '+x.cantidadComprada+' unidades por '+fmtP(x.precioTotal)+' = '+fmtPu(x.precioTotal/x.cantidadComprada)+' c/u'}).join('\n')+'\n\nEl stock inicial será la cantidad comprada; después puedes ajustarlo. ¿Continuar?';
+  if(!confirm(txt))return;
+  f.reduce(function(pr,x){return pr.then(function(){
+    var q={categoria:'empaque',tipo:'Botellas',variable:x.variable,nombre:x.nombre,lote:'S/L',proveedor:x.proveedor,tipoDocumento:'Boleta',documentoCompra:'',fechaIngreso:hoy(),unidadMedida:'unidades',cantidadComprada:x.cantidadComprada,precioTotal:x.precioTotal,minimo:x.minimo,fechaVencimiento:'',diasCriticos:0,requiereSDS:false,notaCompra:x.notaCompra};
+    q.costoUnitario=costoUnit(q);q.stock=x.cantidadComprada;q.codigoUnico=prefijo(x.nombre)+'-'+Math.floor(10000+Math.random()*90000);
+    return api.crear(q,{nombreInsumo:q.nombre,loteInsumo:q.lote,codigoUnicoInsumo:q.codigoUnico,tipo:'ingreso',cantidadUsada:q.stock,delta:q.stock,unidadMedida:q.unidadMedida,fechaConsumo:q.fechaIngreso,loteBrewfather:'',nota:'Ingreso inicial',costoUnitario:q.costoUnitario,costoTotal:q.costoUnitario*q.stock});
+  })},Promise.resolve()).then(function(){toast(f.length===1?'1 insumo registrado':f.length+' insumos registrados')})
+  .catch(function(){toast('No se pudieron registrar todos. Revisa tu conexión y vuelve a intentarlo: solo se crearán los que falten.')});
+}
+
 function pintarTodo(){
   var n=inv.filter(function(i){return alertasDe(i).length}).length;
   $('#resumen').textContent=inv.length+' insumos · '+(n?n+(n===1?' con alerta':' con alertas'):'sin alertas');
-  pintarChips();pintarLista();
+  pintarChips();pintarLista();pintarPendientes();
   if(vista==='perfil'&&actual){if(inv.some(function(i){return i.id===actual}))pintarPerfil(actual,false);else{actual=null;ver('lista')}}
 }
 
