@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.8</title>
+<title>Chuyma Bodega · v3.9</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -239,7 +239,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
   </section>
 
   <section id="v-batches" hidden>
-   <div class="cab"><div><button type="button" class="btn-link" data-volver>Volver</button><h2>Batches</h2></div><button type="button" class="btn btn-p" id="b-nuevo-batch">Nuevo batch</button></div>
+   <div class="cab"><div><button type="button" class="btn-link" data-volver>Volver</button><h2>Batches</h2></div><div class="acciones"><button type="button" class="btn btn-a" id="b-tarifas">Tarifas</button><button type="button" class="btn btn-p" id="b-nuevo-batch">Nuevo batch</button></div></div>
    <div id="bl-lista"></div>
   </section>
 
@@ -255,6 +255,24 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
      <div><label for="bf-vol">Volumen final envasado (L)</label><input id="bf-vol" type="number" step="any" min="0" inputmode="decimal" placeholder="400"></div>
     </div></fieldset>
     <fieldset><legend>Formatos de envase</legend><div class="checks" id="bf-envases"></div><p class="nota">Elige en qué formatos quieres ver el costo por envase.</p></fieldset>
+    <fieldset><legend>Proceso de cocción</legend>
+     <label class="check"><input type="checkbox" id="bf-auto"> Calcular gas, agua y mano de obra automáticamente</label>
+     <div id="bf-proc" hidden>
+      <div class="grid" style="margin-top:10px">
+       <div><label for="bf-macL">Agua de macerado (L)</label><input id="bf-macL" data-p="macL" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-macT">Temperatura macerado (°C)</label><input id="bf-macT" data-p="macT" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-lavL">Agua de lavado (L)</label><input id="bf-lavL" data-p="lavL" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-lavT">Temperatura lavado (°C)</label><input id="bf-lavT" data-p="lavT" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-preL">Litros al empezar el hervor</label><input id="bf-preL" data-p="preL" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-postL">Litros al terminar el hervor</label><input id="bf-postL" data-p="postL" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-enfL">Agua para enfriar (L)</label><input id="bf-enfL" data-p="enfL" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-limL">Agua para limpiar (L)</label><input id="bf-limL" data-p="limL" type="number" step="any" min="0" inputmode="decimal"></div>
+       <div><label for="bf-horas">Horas de trabajo</label><input id="bf-horas" data-p="horas" type="number" step="any" min="0" inputmode="decimal"></div>
+      </div>
+      <label class="check" id="bf-tact-box" hidden style="margin-top:10px"><input type="checkbox" id="bf-tact"> Usar las tarifas actuales (este batch se guardó con tarifas anteriores)</label>
+      <div id="bf-proc-prev" class="costo-prev"></div>
+     </div>
+    </fieldset>
     <fieldset><legend>Costos adicionales ($)</legend><div class="grid" id="bf-adic"></div><p class="nota">Si tienes factura, ingresa el monto neto (sin IVA).</p></fieldset>
     <fieldset><legend>Nota</legend><textarea id="bf-nota" rows="2"></textarea></fieldset>
     <p id="bf-err" class="err" hidden></p>
@@ -317,6 +335,23 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
  </form>
 </dialog>
 <div id="et-tmp" aria-hidden="true"></div>
+<dialog id="dlg-tar">
+ <form id="form-tar" method="dialog" novalidate>
+  <h3>Tarifas de cocción</h3>
+  <p class="nota">Se usan para calcular el gas, el agua y la mano de obra de cada batch nuevo.</p>
+  <div class="grid">
+   <div><label for="t-gasPrecio">Precio del cilindro de gas ($)</label><input id="t-gasPrecio" data-t="gasPrecio" type="number" min="0" step="1" inputmode="numeric"></div>
+   <div><label for="t-gasKg">Kg del cilindro</label><input id="t-gasKg" data-t="gasKg" type="number" min="0" step="any" inputmode="decimal"></div>
+   <div><label for="t-aguaM3">Precio del agua por m³ ($)</label><input id="t-aguaM3" data-t="aguaM3" type="number" min="0" step="1" inputmode="numeric"></div>
+   <div><label for="t-hora">Valor de la hora de trabajo ($)</label><input id="t-hora" data-t="hora" type="number" min="0" step="1" inputmode="numeric"></div>
+   <div><label for="t-efic">Aprovechamiento de la cocinilla (%)</label><input id="t-efic" data-t="efic" type="number" min="1" max="100" step="any" inputmode="decimal"></div>
+   <div><label for="t-tAgua">Temperatura del agua de la llave (°C)</label><input id="t-tAgua" data-t="tAgua" type="number" min="0" step="any" inputmode="decimal"></div>
+  </div>
+  <p class="nota">El aprovechamiento es qué parte del calor del gas llega al agua. Parte en 40 % y se corregirá con el registro de cilindros.</p>
+  <p id="t-err" class="err" hidden></p>
+  <div class="pie"><button type="button" class="btn" id="t-cancelar">Cancelar</button><button type="submit" class="btn btn-p" id="t-ok">Guardar</button></div>
+ </form>
+</dialog>
 <dialog id="dlg-pass">
  <form id="form-pass" method="dialog" novalidate>
   <h3>Confirma que eres tú</h3>
@@ -331,7 +366,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.8";
+var APP_VERSION = "v3.9";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -357,9 +392,24 @@ var SDS = 'Hoja de seguridad (SDS)';
 function sdsPorDefecto(it){return it.categoria==='laboratorio'||(it.categoria==='limpieza'&&it.tipo==='Químico')}
 function necesitaSDS(it){return it.requiereSDS!=null?!!it.requiereSDS:sdsPorDefecto(it)}
 var ENVASES={'Botella 330 mL':330,'Botella 500 mL':500,'Lata 355 mL':355,'Lata 473 mL':473,'Barril 20 L':20000,'Barril 30 L':30000,'Barril 50 L':50000};
-var CONCEPTOS=['Gas','Electricidad','Agua','Mano de obra','CO₂','Otro'];
+var CONCEPTOS=['Gas','Agua','Mano de obra','CO₂','Otro'];
+var AUTO_CONC=['Gas','Agua','Mano de obra','Electricidad'];
+var TARIFAS_DEF={gasPrecio:21500,gasKg:11,aguaM3:1010,hora:5500,efic:40,tAgua:15};
+var PROC_DEF={macL:30,macT:73,lavL:30,lavT:78,preL:48,postL:43,enfL:80,limL:100,horas:8};
+var TARIFAS=Object.assign({},TARIFAS_DEF);
+var PCI_GAS=46,CALOR_EVAP=2.257,T_MOSTO=65;
+function calcProceso(pr,t){
+  var T0=num(t.tAgua),kj=4.186*(num(pr.macL)*Math.max(0,num(pr.macT)-T0)+num(pr.lavL)*Math.max(0,num(pr.lavT)-T0)+num(pr.preL)*Math.max(0,100-T_MOSTO));
+  var evap=Math.max(0,num(pr.preL)-num(pr.postL)),mj=kj/1000+evap*CALOR_EVAP,ef=num(t.efic)/100;
+  var kg=ef>0?mj/(ef*PCI_GAS):0,pkg=num(t.gasKg)?num(t.gasPrecio)/num(t.gasKg):0;
+  var L=num(pr.macL)+num(pr.lavL)+num(pr.enfL)+num(pr.limL),h=num(pr.horas);
+  var r={mj:mj,kg:kg,pkg:pkg,gas:kg*pkg,litros:L,agua:L/1000*num(t.aguaM3),horas:h,hora:num(t.hora),mo:h*num(t.hora),evap:evap};
+  r.total=r.gas+r.agua+r.mo;return r;
+}
+function procesoDe(b){return b&&b.proceso&&b.proceso.auto?calcProceso(b.proceso,b.proceso.t||TARIFAS):null}
+function mismasTarifas(a,b){return Object.keys(TARIFAS_DEF).every(function(k){return num(a&&a[k])===num(b&&b[k])})}
 function etiquetaB(b){return ((b.codigo||'')+' '+(b.nombre||'')).trim()}
-function costoAdic(b){return (b.adicionales||[]).reduce(function(s,a){return s+num(a.monto)},0)}
+function costoAdic(b){var pr=procesoDe(b);return (b.adicionales||[]).reduce(function(s,a){return s+num(a.monto)},0)+(pr?pr.total:0)}
 function docs(it){return Array.isArray(it.adjuntos)?it.adjuntos:[]}
 
 function $(s){return document.querySelector(s)}
@@ -430,6 +480,7 @@ function crearApiFirebase(){
     vigilarBatches:function(cb,err){return BAT.onSnapshot(function(s){cb(s.docs.map(limpiar))},err)},
     crearBatch:function(d){return BAT.add(d).then(function(r){return r.id})},
     actualizarBatch:function(id,d){return BAT.doc(id).update(d)},
+    guardarTarifas:function(v){return BAT.doc('_tarifas').set({valores:v,actualizado:hoy()})},
     movBatch:function(b){
       var tx=[etiquetaB(b)];if(b.textoOrigen&&tx.indexOf(b.textoOrigen)<0)tx.push(b.textoOrigen);
       return Promise.all([MOV.where('idBatch','==',b.id).get(),MOV.where('loteBrewfather','in',tx).get()]).then(function(rs){var m={};rs.forEach(function(s){s.docs.forEach(function(d){m[d.id]=limpiar(d)})});return Object.keys(m).map(function(k){return m[k]})});
@@ -482,6 +533,7 @@ function crearApiDemo(){
     vigilarBatches:function(cb){bcbs.push(cb);setTimeout(emitirB,0);return function(){bcbs=bcbs.filter(function(c){return c!==cb})}},
     crearBatch:function(d){var id='b'+(++n);bat.push(Object.assign({id:id},d));emitirB();return ok(id)},
     actualizarBatch:function(id,d){Object.assign(bat.find(function(b){return b.id===id}),d);emitirB();return ok()},
+    guardarTarifas:function(v){bat=bat.filter(function(b){return b.id!=='_tarifas'});bat.push({id:'_tarifas',valores:v});emitirB();return ok()},
     movBatch:function(b){var tx=[etiquetaB(b),b.textoOrigen];return ok(mov.filter(function(m){return m.idBatch===b.id||tx.indexOf(m.loteBrewfather)>=0}))}
   };
 }
@@ -557,7 +609,7 @@ api.onAuth(function(user){
     desuscribir=api.vigilar(function(datos){inv=datos;pintarTodo()},function(e){
       $('#lista').innerHTML='<div class="vacio">'+(e&&e.code==='permission-denied'?'Tu cuenta no tiene permiso para ver el inventario. Revisa las reglas de Firestore.':'No se pudo cargar el inventario. Revisa tu conexión.')+'</div>';
     });
-    desBatches=api.vigilarBatches(function(d){batches=d;batchesErr=false;if(vista==='batches')pintarBatches()},function(){batches=[];batchesErr=true;if(vista==='batches')pintarBatches()});
+    desBatches=api.vigilarBatches(function(d){var t=d.find(function(x){return x.id==='_tarifas'});TARIFAS=Object.assign({},TARIFAS_DEF,t?t.valores:{});d=d.filter(function(x){return x.id!=='_tarifas'});batches=d;batchesErr=false;if(vista==='batches')pintarBatches()},function(){batches=[];batchesErr=true;if(vista==='batches')pintarBatches()});
   }else{
     inv=[];batches=[];confirmadoHasta=0;$('#app').hidden=true;$('#login').hidden=false;
   }
@@ -942,6 +994,20 @@ function pintarBatches(){
     $('#bl-huerfanos').innerHTML='<div class="sec" style="margin-top:22px"><h3>Batches escritos a mano</h3></div><p class="nota" style="margin-bottom:8px">Tienen consumos registrados pero no tienen ficha. Créala para ver su informe de costos.</p>'+ks.map(function(k){return '<div class="doc"><div>'+esc(k)+'</div><button class="btn" type="button" data-huerfano="'+esc(k)+'">Crear ficha</button></div>'}).join('');
   }).catch(function(){});
 }
+$('#b-tarifas').addEventListener('click',function(){
+  Array.prototype.forEach.call(document.querySelectorAll('#form-tar [data-t]'),function(el){el.value=TARIFAS[el.dataset.t]});
+  $('#t-err').hidden=true;$('#t-ok').disabled=false;$('#dlg-tar').showModal();
+});
+$('#t-cancelar').addEventListener('click',function(){$('#dlg-tar').close()});
+$('#form-tar').addEventListener('submit',function(e){
+  e.preventDefault();var v={},err=$('#t-err');
+  Array.prototype.forEach.call(document.querySelectorAll('#form-tar [data-t]'),function(el){v[el.dataset.t]=num(el.value)});
+  if(!(v.gasKg>0)||!(v.efic>0&&v.efic<=100)){err.textContent='Revisa los kg del cilindro y el aprovechamiento (entre 1 y 100 %).';err.hidden=false;return}
+  confirmar('guardar las tarifas').then(function(){
+    $('#t-ok').disabled=true;
+    return api.guardarTarifas(v).then(function(){TARIFAS=Object.assign({},TARIFAS_DEF,v);$('#dlg-tar').close();toast('Tarifas guardadas')});
+  }).catch(function(e){$('#t-ok').disabled=false;if(e!=='cancelado'){err.textContent='No se pudieron guardar. Revisa tu conexión.';err.hidden=false}});
+});
 $('#bl-lista').addEventListener('click',function(e){
   var b=e.target.closest('[data-batch]');if(b){abrirBatch(b.dataset.batch);return}
   var o=e.target.closest('[data-huerfano]');if(o)abrirBatchForm(null,o.dataset.huerfano);
@@ -958,9 +1024,26 @@ function abrirBatchForm(id,texto){
   $('#bf-envases').innerHTML=Object.keys(ENVASES).map(function(k){return '<label class="check"><input type="checkbox" value="'+esc(k)+'"'+((d.envases||[]).indexOf(k)>=0?' checked':'')+'> '+esc(k)+'</label>'}).join('');
   var ad={};(d.adicionales||[]).forEach(function(a){ad[a.concepto]=a.monto});
   var cs=CONCEPTOS.slice();Object.keys(ad).forEach(function(k){if(cs.indexOf(k)<0)cs.splice(cs.length-1,0,k)});
+  var pr=d.proceso&&d.proceso.auto?d.proceso:null,base=pr||PROC_DEF;
+  $('#bf-auto').checked=!!pr||!b;
+  Array.prototype.forEach.call(document.querySelectorAll('#bf-proc [data-p]'),function(el){el.value=base[el.dataset.p]!=null?base[el.dataset.p]:PROC_DEF[el.dataset.p]});
+  $('#form-batch').dataset.tg=pr&&pr.t?JSON.stringify(pr.t):'';
+  var difiere=!!(pr&&pr.t&&!mismasTarifas(pr.t,TARIFAS));$('#bf-tact-box').hidden=!difiere;$('#bf-tact').checked=false;
+  if($('#bf-auto').checked)cs=cs.filter(function(c){return AUTO_CONC.indexOf(c)<0||num(ad[c])>0});
   $('#bf-adic').innerHTML=cs.map(function(c,i){return '<div><label for="bf-a'+i+'">'+esc(c)+'</label><input id="bf-a'+i+'" data-concepto="'+esc(c)+'" type="number" min="0" step="1" inputmode="numeric" value="'+(ad[c]||'')+'"></div>'}).join('');
-  ver('bform');$('#bf-codigo').focus();
+  pintarProcForm();ver('bform');$('#bf-codigo').focus();
 }
+function tarifasForm(){var tg=$('#form-batch').dataset.tg;return (tg&&!$('#bf-tact').checked)?JSON.parse(tg):TARIFAS}
+function leerProcForm(){var o={};Array.prototype.forEach.call(document.querySelectorAll('#bf-proc [data-p]'),function(el){o[el.dataset.p]=num(el.value)});return o}
+function pintarProcForm(){
+  var on=$('#bf-auto').checked;$('#bf-proc').hidden=!on;
+  Array.prototype.forEach.call(document.querySelectorAll('#bf-adic input'),function(el){var c=el.dataset.concepto;if(AUTO_CONC.indexOf(c)>=0)el.parentNode.hidden=on&&!num(el.value)});
+  if(!on)return;
+  var r=calcProceso(leerProcForm(),tarifasForm());
+  $('#bf-proc-prev').innerHTML='Gas: '+fmtN(Math.round(r.kg*100)/100)+' kg estimados · '+fmtP(r.gas)+'<br>Agua: '+fmtN(r.litros)+' L · '+fmtP(r.agua)+'<br>Mano de obra: '+fmtN(r.horas)+' h × '+fmtP(r.hora)+' · '+fmtP(r.mo)+'<br><b>Total: '+fmtP(r.total)+'</b>';
+}
+$('#bf-auto').addEventListener('change',pintarProcForm);$('#bf-tact').addEventListener('change',pintarProcForm);
+$('#bf-proc').addEventListener('input',pintarProcForm);
 $('#form-batch').addEventListener('submit',function(e){
   e.preventDefault();var err=$('#bf-err');err.hidden=true;
   var cod=$('#bf-codigo').value.trim();
@@ -970,6 +1053,9 @@ $('#form-batch').addEventListener('submit',function(e){
     envases:Array.prototype.map.call(document.querySelectorAll('#bf-envases input:checked'),function(i){return i.value}),
     adicionales:Array.prototype.map.call(document.querySelectorAll('#bf-adic input'),function(i){return {concepto:i.dataset.concepto,monto:num(i.value)}}).filter(function(a){return a.monto>0})};
   if(!batchEdit&&$('#form-batch').dataset.origen)p.textoOrigen=$('#form-batch').dataset.origen;
+  if($('#bf-auto').checked){p.proceso=Object.assign({auto:true},leerProcForm(),{t:Object.assign({},tarifasForm())});
+    p.adicionales=p.adicionales.filter(function(a){return AUTO_CONC.indexOf(a.concepto)<0})}
+  else p.proceso={auto:false};
   $('#bf-guardar').disabled=true;
   (batchEdit?api.actualizarBatch(batchEdit,p).then(function(){return batchEdit}):api.crearBatch(p)).then(function(id){toast('Batch guardado');setTimeout(function(){abrirBatch(id)},150)})
   .catch(function(){$('#bf-guardar').disabled=false;err.textContent='No se pudo guardar. Revisa tu conexión y la regla de "batches".';err.hidden=false});
@@ -996,7 +1082,9 @@ function pintarBatch(b,ms){
       filas+='<tr><td>'+esc(m.nombreInsumo)+'<br><small style="color:var(--hint)">Lote '+esc(m.loteInsumo||'S/L')+' · '+fmtF(m.fechaConsumo)+'</small></td><td class="n">'+fmtN(m.cantidadUsada)+' '+esc(u(m))+'</td><td class="n">'+(m.costoTotal!=null?fmtP(m.costoTotal):'Sin precio *')+'</td></tr>'});
     filas+='<tr><td colspan="2" style="color:var(--muted)">Subtotal</td><td class="n">'+fmtP(st)+'</td></tr>';
   });
-  var adic=b.adicionales||[],totAd=costoAdic(b),total=totIns+totAd,vol=num(b.volumenL),cpl=vol?total/vol:null;
+  var adic=(b.adicionales||[]).slice(),prc=procesoDe(b);
+  if(prc)adic=[{concepto:'Gas · '+fmtN(Math.round(prc.kg*100)/100)+' kg estimados',monto:prc.gas},{concepto:'Agua · '+fmtN(prc.litros)+' L',monto:prc.agua},{concepto:'Mano de obra · '+fmtN(prc.horas)+' h × '+fmtP(prc.hora),monto:prc.mo}].concat(adic);
+  var totAd=costoAdic(b),total=totIns+totAd,vol=num(b.volumenL),cpl=vol?total/vol:null;
   var mets='<div class="met"><span>Costo de producción</span><b>'+fmtP(total)+'</b><small>Insumos '+fmtP(totIns)+' · otros '+fmtP(totAd)+'</small></div>'+
     '<div class="met"><span>Volumen envasado</span><b>'+(vol?fmtN(vol)+' L':'—')+'</b>'+(vol?'':'<small>Agrégalo en "Editar"</small>')+'</div>'+
     '<div class="met"><span>Costo por litro</span><b>'+(cpl!=null?fmtPu(cpl):'—')+'</b></div>';
