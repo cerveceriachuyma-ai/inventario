@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.13</title>
+<title>Chuyma Bodega · v3.14</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -114,6 +114,10 @@ legend{font-weight:500;padding:0 6px}
 
 dialog{border:0;border-radius:14px;padding:0;width:min(440px,calc(100% - 24px));color:var(--ink)}
 dialog::backdrop{background:rgba(34,28,21,.4)}
+#dlg-env{width:min(640px,calc(100% - 24px))}
+.env-fila{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:end;margin-top:10px}
+.env-fila small{grid-column:1/-1;color:var(--muted)}
+.lote-cod{font-family:ui-monospace,Menlo,monospace;font-weight:700;letter-spacing:.02em}
 dialog form{padding:20px}
 dialog h3{margin:0 0 4px;font-size:20px}
 dialog .campo{margin-top:12px}
@@ -332,6 +336,25 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
  </form>
 </dialog>
 
+<dialog id="dlg-env">
+ <form id="form-env" method="dialog" novalidate>
+  <h3>Registrar envasado</h3>
+  <p class="nota" id="env-sub"></p>
+  <div class="grid">
+   <div><label for="env-fecha">Fecha de envasado</label><input id="env-fecha" type="date"></div>
+   <div><label for="env-pref">Consumo preferente (opcional)</label><input id="env-pref" type="date"></div>
+  </div>
+  <h4 style="margin:16px 0 0">1. ¿Cuántas unidades llenaste?</h4>
+  <div id="env-fmts"></div>
+  <h4 style="margin:18px 0 0">2. Piezas que se descontarán de bodega</h4>
+  <p class="nota">Se calculan solas: 1 tapa y 1 etiqueta por botella. Puedes corregirlas, por ejemplo si se quebró una botella.</p>
+  <div id="env-piezas"></div>
+  <div id="env-avisos"></div>
+  <div class="costo-prev" id="env-lote"></div>
+  <p id="env-err" class="err" hidden></p>
+  <div class="pie"><button type="button" class="btn" id="env-cancelar">Cancelar</button><button type="submit" class="btn btn-p" id="env-ok">Registrar envasado</button></div>
+ </form>
+</dialog>
 <dialog id="dlg-et">
  <form method="dialog">
   <h3>Etiqueta QR</h3>
@@ -373,7 +396,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.13";
+var APP_VERSION = "v3.14";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -1023,7 +1046,7 @@ function abrirBatches(){batchActual=null;ver('batches');pintarBatches()}
 function pintarBatches(){
   var box=$('#bl-lista');
   if(batchesErr){box.innerHTML='<div class="vacio">No se pudieron cargar los batches. Revisa que agregaste la regla de "batches" en Firestore.</div>';return}
-  var h=batches.length?'<div class="lista">'+batchesOrden().map(function(b){return '<button class="fila" type="button" data-batch="'+esc(b.id)+'"><div><strong>'+esc(etiquetaB(b))+'</strong><small>'+fmtF(b.fecha)+(num(b.volumenL)?' · '+fmtN(b.volumenL)+' L':' · sin volumen')+'</small></div><div class="der"><span class="cant">›</span></div></button>'}).join('')+'</div>':'<div class="vacio">Todavía no hay batches. Crea uno con "Nuevo batch" o desde "Registrar uso".</div>';
+  var h=batches.length?'<div class="lista">'+batchesOrden().map(function(b){return '<button class="fila" type="button" data-batch="'+esc(b.id)+'"><div><strong>'+esc(etiquetaB(b))+'</strong><small>'+fmtF(b.fecha)+(num(b.volumenL)?' · '+fmtN(b.volumenL)+' L':' · sin volumen')+((b.envasados||[]).length?' · lote '+(b.envasados||[]).map(function(e){return esc(e.lote)}).join(', '):'')+'</small></div><div class="der"><span class="cant">›</span></div></button>'}).join('')+'</div>':'<div class="vacio">Todavía no hay batches. Crea uno con "Nuevo batch" o desde "Registrar uso".</div>';
   box.innerHTML=h+'<div id="bl-huerfanos"></div>';
   api.movTodos().then(function(ms){
     var conocidos={};batches.forEach(function(b){conocidos[etiquetaB(b)]=1;if(b.textoOrigen)conocidos[b.textoOrigen]=1});
@@ -1142,6 +1165,84 @@ function costosFormato(b,ms,cplLiq){
   });
 }
 
+/* ---------- Envasado y lote ---------- */
+var batchTab='costos',envBatch=null;
+function numBatch(b){var m=String(b.codigo||'').match(/\d+/);return m?String(parseInt(m[0],10)).padStart(2,'0'):'XX'}
+function codigoLote(b,fecha){
+  var base='CH-'+numBatch(b)+'-'+String(fecha||hoy()).replace(/-/g,'').slice(2),usados={};
+  batches.forEach(function(x){(x.envasados||[]).forEach(function(e){usados[e.lote]=1})});
+  if(!usados[base])return base;var n=2;while(usados[base+'-'+n])n++;return base+'-'+n;
+}
+function opcionesPieza(filtro,sel){
+  var l=inv.filter(function(i){return esEnvase(i)&&filtro(i)}).sort(function(a,c){return num(c.stock)-num(a.stock)});
+  return {html:'<option value="">— no usar —</option>'+l.map(function(i,ix){return '<option value="'+esc(i.id)+'"'+((sel?i.id===sel:ix===0)?' selected':'')+'>'+esc(i.nombre)+' · quedan '+fmtN(i.stock)+'</option>'}).join(''),hay:l.length>0};
+}
+function abrirEnvasado(b){
+  envBatch=b;$('#env-err').hidden=true;$('#env-ok').disabled=false;
+  $('#env-sub').textContent=etiquetaB(b)+(num(b.volumenL)?' · '+fmtN(b.volumenL)+' L envasados':'');
+  $('#env-fecha').value=hoy();$('#env-pref').value='';
+  var fs=(b.envases||[]).filter(function(k){return ENVASES[k]});
+  if(!fs.length)fs=Object.keys(ENVASES).filter(function(k){return /^(Botella|Lata)/.test(k)});
+  $('#env-fmts').innerHTML='<div class="grid">'+fs.map(function(k,i){return '<div><label for="env-f'+i+'">'+esc(k)+'</label><input id="env-f'+i+'" data-fmt="'+esc(k)+'" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>'}).join('')+'</div>';
+  pintarPiezas();$('#dlg-env').showModal();
+}
+function unidadesEnv(){var u={};Array.prototype.forEach.call(document.querySelectorAll('#env-fmts [data-fmt]'),function(el){var n=Math.round(num(el.value));if(n>0)u[el.dataset.fmt]=n});return u}
+function pintarPiezas(){
+  var u=unidadesEnv(),b=envBatch,filas=[],nBot=0,nLata=0;
+  Object.keys(u).forEach(function(k){
+    if(/^Barril/.test(k))return;
+    var lata=/^Lata/.test(k);if(lata)nLata+=u[k];else nBot+=u[k];
+    var o=opcionesPieza(function(i){return (i.tipo==='Botellas'||i.tipo==='Latas')&&formatoDe(i)===k});
+    filas.push({id:'p'+filas.length,label:k,op:o,q:u[k],falta:o.hay?'':'No tienes registrado un insumo "'+k+'" en bodega.'});
+  });
+  if(nBot){var o=opcionesPieza(function(i){return i.tipo==='Tapas Corona'});filas.push({id:'p'+filas.length,label:'Tapas',op:o,q:nBot,falta:o.hay?'':'No tienes tapas corona registradas en bodega.'})}
+  if(nLata){var o2=opcionesPieza(function(i){return i.tipo==='Tapas de Latas'});filas.push({id:'p'+filas.length,label:'Tapas de lata',op:o2,q:nLata,falta:o2.hay?'':'No tienes tapas de lata registradas en bodega.'})}
+  if(nBot+nLata){
+    var est=String(b.nombre||'').toLowerCase(),et=inv.filter(function(i){return esEnvase(i)&&i.tipo==='Etiquetas'}),m=et.find(function(i){return i.variable&&est.indexOf(String(i.variable).toLowerCase())>=0});
+    var o3=opcionesPieza(function(i){return i.tipo==='Etiquetas'},m?m.id:null);
+    filas.push({id:'p'+filas.length,label:'Etiquetas',op:o3,q:nBot+nLata,falta:o3.hay?'':'No tienes etiquetas registradas en bodega.'});
+  }
+  $('#env-piezas').innerHTML=filas.length?filas.map(function(f){return '<div class="env-fila" data-pieza><div><label for="'+f.id+'-i">'+esc(f.label)+'</label><select id="'+f.id+'-i" data-i>'+f.op.html+'</select></div><div><label for="'+f.id+'-q">Cantidad</label><input id="'+f.id+'-q" data-q type="number" min="0" step="1" inputmode="numeric" value="'+f.q+'"></div>'+(f.falta?'<small style="color:var(--warn)">⚠️ '+esc(f.falta)+'</small>':'')+'</div>'}).join(''):'<p class="nota">Escribe arriba cuántas unidades llenaste.</p>';
+  revisarEnvasado();
+}
+function piezasEnv(){var r=[];Array.prototype.forEach.call(document.querySelectorAll('#env-piezas [data-pieza]'),function(f){var id=f.querySelector('[data-i]').value,q=Math.round(num(f.querySelector('[data-q]').value));if(id&&q>0){var it=inv.find(function(i){return i.id===id});r.push({idInsumo:id,nombre:it?it.nombre:'',cantidad:q,stock:it?num(it.stock):0})}});
+  var j={};r.forEach(function(x){if(j[x.idInsumo]){j[x.idInsumo].cantidad+=x.cantidad}else j[x.idInsumo]=x});return Object.keys(j).map(function(k){return j[k]})}
+function revisarEnvasado(){
+  var u=unidadesEnv(),b=envBatch,av=[],ps=piezasEnv(),lit=Object.keys(u).reduce(function(s2,k){return s2+u[k]*ENVASES[k]/1000},0),vol=num(b.volumenL);
+  ps.forEach(function(p){if(p.cantidad>p.stock)av.push('No alcanza "'+p.nombre+'": quedan '+fmtN(p.stock)+' y necesitas '+fmtN(p.cantidad)+'. Ajusta el stock de bodega o la cantidad.')});
+  if(lit&&vol&&Math.abs(lit-vol)/vol>0.05)av.push('Estas unidades suman '+fmtN(Math.round(lit*10)/10)+' L, y el batch dice '+fmtN(vol)+' L envasados. Si es correcto, puedes seguir igual.');
+  $('#env-avisos').innerHTML=av.map(function(a){return '<p class="nota" style="color:var(--warn)">⚠️ '+esc(a)+'</p>'}).join('');
+  $('#env-lote').innerHTML=Object.keys(u).length?'Código de lote: <span class="lote-cod">'+esc(codigoLote(b,$('#env-fecha').value))+'</span><br>'+Object.keys(u).map(function(k){return fmtN(u[k])+' × '+esc(k)}).join(' · ')+' = '+fmtN(Math.round(lit*10)/10)+' L':'El código de lote aparecerá aquí.';
+}
+$('#env-fmts').addEventListener('input',pintarPiezas);
+$('#env-piezas').addEventListener('input',revisarEnvasado);$('#env-piezas').addEventListener('change',revisarEnvasado);
+$('#env-fecha').addEventListener('input',revisarEnvasado);
+$('#env-cancelar').addEventListener('click',function(){$('#dlg-env').close()});
+$('#form-env').addEventListener('submit',function(e){
+  e.preventDefault();var err=$('#env-err');err.hidden=true;
+  var b=envBatch,u=unidadesEnv(),ps=piezasEnv(),fecha=$('#env-fecha').value,pref=$('#env-pref').value;
+  if(!fecha){err.textContent='Elige la fecha de envasado.';err.hidden=false;return}
+  if(fecha>hoy()){err.textContent='La fecha de envasado no puede ser futura.';err.hidden=false;return}
+  if(!Object.keys(u).length){err.textContent='Escribe cuántas unidades llenaste de al menos un formato.';err.hidden=false;return}
+  var corto=ps.filter(function(p){return p.cantidad>p.stock});
+  if(corto.length){err.textContent='No alcanza el stock de: '+corto.map(function(p){return p.nombre}).join(', ')+'. Corrige el stock en bodega con "Ajustar stock" o cambia la cantidad.';err.hidden=false;return}
+  var lote=codigoLote(b,fecha);
+  if(!confirm('Lote '+lote+'\n\n'+Object.keys(u).map(function(k){return u[k]+' × '+k}).join('\n')+'\n\nSe descontará de bodega:\n'+(ps.length?ps.map(function(p){return '• '+p.cantidad+' × '+p.nombre}).join('\n'):'(nada)')+'\n\n¿Registrar el envasado?'))return;
+  $('#env-ok').disabled=true;var hechos=[];
+  var extra={tipo:'consumo',fechaConsumo:fecha,idBatch:b.id,loteBrewfather:etiquetaB(b),nota:'Envasado lote '+lote,loteEnvasado:lote};
+  ps.reduce(function(pr,p){return pr.then(function(){return api.mover(p.idInsumo,-p.cantidad,extra).then(function(){hechos.push({idInsumo:p.idInsumo,nombre:p.nombre,cantidad:p.cantidad})})})},Promise.resolve())
+  .then(function(){return false},function(){return true})
+  .then(function(fallo){
+    var reg={lote:lote,fecha:fecha,consumoPref:pref,unidades:u,piezas:hechos,creado:hoy()};if(fallo)reg.incompleto=true;
+    return api.actualizarBatch(b.id,{envasados:(b.envasados||[]).concat([reg])}).then(function(){
+      $('#dlg-env').close();
+      if(fallo)alert('El lote '+lote+' quedó registrado, pero no se pudieron descontar todas las piezas. Revisa el stock de: '+ps.filter(function(p){return !hechos.some(function(h){return h.idInsumo===p.idInsumo})}).map(function(p){return p.nombre}).join(', ')+'.');
+      else toast('Envasado registrado · lote '+lote);
+      batchTab='produccion';setTimeout(function(){abrirBatch(b.id)},150);
+    });
+  }).catch(function(){$('#env-ok').disabled=false;err.textContent='No se pudo guardar el envasado. Revisa tu conexión.';err.hidden=false});
+});
+
 function pintarBatch(b,ms){
   function u(m){return UNI[m.unidadMedida]!=null?UNI[m.unidadMedida]:(m.unidadMedida||'')}
   var orden=Object.keys(CATS).concat(['otros']),grupos={},totIns=0,sinCosto=0;
@@ -1176,16 +1277,42 @@ function pintarBatch(b,ms){
       '</tbody></table></div><p class="nota">Envase = botella o lata + tapa + etiqueta (una por unidad)'+(fm.some(function(f){return f.barril})?'; los barriles se consideran retornables, sin costo de envase':'')+'. Si un formato no tiene unidades, se calcula con los precios de tu bodega: registra en este batch el uso de botellas, tapas y etiquetas al envasar.</p>'+
       (litrosEnv&&vol&&Math.abs(litrosEnv-vol)/vol>0.05?'<p class="nota" style="color:var(--warn)">⚠️ Las botellas registradas suman '+fmtN(Math.round(litrosEnv*10)/10)+' L, pero el volumen envasado dice '+fmtN(vol)+' L. Revisa una de las dos cifras.</p>':''))+'</div>';
   }
+  var envs=(b.envasados||[]).slice().sort(function(a,c){return String(a.fecha).localeCompare(String(c.fecha))});
+  var metsP='<div class="met"><span>Estilo</span><b>'+esc(b.nombre||'—')+'</b></div>'+
+    '<div class="met"><span>Grado alcohólico</span><b>'+(abv?fmtN(abv)+' % vol':'—')+'</b><small>'+(num(b.og)||num(b.fg)?'OG '+(fmtDens(num(b.og))||'—')+' · FG '+(fmtDens(num(b.fg))||'—'):'Agrega OG y FG en "Editar"')+'</small></div>'+
+    '<div class="met"><span>Cocción</span><b>'+fmtF(b.fecha)+'</b></div>'+
+    '<div class="met"><span>Volumen envasado</span><b>'+(vol?fmtN(vol)+' L':'—')+'</b></div>';
+  var bLotes='<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Lotes de envasado</h3>'+(envs.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Lote</th><th>Envasado</th><th>Consumo preferente</th><th>Unidades</th></tr></thead><tbody>'+
+    envs.map(function(e){return '<tr><td class="lote-cod">'+esc(e.lote)+(e.incompleto?' ⚠️':'')+'</td><td>'+fmtF(e.fecha)+'</td><td>'+fmtF(e.consumoPref)+'</td><td>'+Object.keys(e.unidades||{}).map(function(k){return fmtN(e.unidades[k])+' × '+esc(k)}).join('<br>')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="nota">Este batch todavía no se envasa. Cuando lo hagas, toca "Registrar envasado".</p>')+'</div>';
+  var pr=b.proceso&&b.proceso.auto?b.proceso:null;
+  var bProc=pr?'<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Proceso de cocción</h3><div class="scroll"><table class="tabla"><tbody>'+
+    '<tr><td>Agua de macerado</td><td class="n">'+fmtN(pr.macL)+' L a '+fmtN(pr.macT)+' °C</td></tr>'+
+    '<tr><td>Agua de lavado</td><td class="n">'+fmtN(pr.lavL)+' L a '+fmtN(pr.lavT)+' °C</td></tr>'+
+    '<tr><td>Hervor</td><td class="n">'+fmtN(pr.preL)+' L → '+fmtN(pr.postL)+' L</td></tr>'+
+    '<tr><td>Agua de enfriado y limpieza</td><td class="n">'+fmtN(num(pr.enfL)+num(pr.limL))+' L</td></tr>'+
+    '</tbody></table></div></div>':'';
+  var filasP='';
+  orden.forEach(function(c){var g=grupos[c];if(!g)return;
+    filasP+='<tr class="sub"><td colspan="4">'+(c==='otros'?'Otros':CATS[c].n)+'</td></tr>';
+    g.slice().sort(function(a,c2){return String(a.nombreInsumo).localeCompare(String(c2.nombreInsumo),'es')}).forEach(function(m){var it=inv.find(function(i){return i.id===m.idInsumo});
+      filasP+='<tr><td>'+esc(m.nombreInsumo)+(m.loteEnvasado?'<br><small style="color:var(--hint)">Envasado '+esc(m.loteEnvasado)+'</small>':'')+'</td><td>'+esc(m.loteInsumo||'S/L')+'</td><td>'+esc(it&&it.proveedor||'—')+'</td><td class="n">'+fmtN(m.cantidadUsada)+' '+esc(u(m))+'</td></tr>'});
+  });
+  var bInsP='<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Insumos utilizados</h3>'+(ms.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Insumo</th><th>Lote del fabricante</th><th>Proveedor</th><th class="n">Cantidad</th></tr></thead><tbody>'+filasP+'</tbody></table></div>':'<p class="nota">Este batch todavía no tiene consumos registrados.</p>')+'</div>';
+  var prod=batchTab==='produccion';
   $('#v-batch').innerHTML=
-    '<div class="cab"><div><button type="button" class="btn-link no-print" data-volver>Volver</button><h2>'+esc(etiquetaB(b))+'</h2><p class="sub">Chuyma · Informe de batch · cocción '+fmtF(b.fecha)+'</p></div>'+
-    '<div class="acciones no-print"><button class="btn" type="button" id="bt-editar">Editar</button><button class="btn btn-p" type="button" id="bt-imprimir">Imprimir o guardar PDF</button></div></div>'+
-    '<div class="metricas">'+mets+'</div>'+
-    tf+
+    '<div class="cab"><div><button type="button" class="btn-link no-print" data-volver>Volver</button><h2>'+esc(etiquetaB(b))+'</h2><p class="sub">Chuyma · '+(prod?'Ficha de producción':'Informe de costos')+' · cocción '+fmtF(b.fecha)+'</p></div>'+
+    '<div class="acciones no-print"><button class="btn" type="button" id="bt-editar">Editar</button><button class="btn btn-a" type="button" id="bt-envasar">Registrar envasado</button><button class="btn btn-p" type="button" id="bt-imprimir">Imprimir o guardar PDF</button></div></div>'+
+    '<div class="chips no-print" role="tablist"><button type="button" class="chip'+(prod?' on':'')+'" data-tab="produccion">Ficha de producción</button><button type="button" class="chip'+(prod?'':' on')+'" data-tab="costos">Informe de costos</button></div>'+
+    (prod?'<div class="metricas">'+metsP+'</div>'+bLotes+bProc+bInsP:
+    '<div class="metricas">'+mets+'</div>'+tf+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Insumos utilizados</h3>'+(ms.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Insumo</th><th class="n">Cantidad</th><th class="n">Costo</th></tr></thead><tbody>'+filas+'<tr class="tot"><td colspan="2">Total insumos</td><td class="n">'+fmtP(totIns)+'</td></tr></tbody></table></div>':'<p class="nota">Este batch todavía no tiene consumos registrados.</p>')+
     (sinCosto?'<p class="nota">* '+sinCosto+(sinCosto===1?' insumo no tenía':' insumos no tenían')+' precio al momento del uso. El costo real es mayor que el mostrado.</p>'+BTN_COMPLETAR:'')+'</div>'+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costos adicionales</h3>'+(adic.length?'<div class="scroll"><table class="tabla"><tbody>'+adic.map(function(a){return '<tr><td>'+esc(a.concepto)+'</td><td class="n">'+fmtP(num(a.monto))+'</td></tr>'}).join('')+'<tr class="tot"><td>Total adicionales</td><td class="n">'+fmtP(totAd)+'</td></tr></tbody></table></div>':'<p class="nota">Sin costos adicionales. Agrega gas, luz, agua y mano de obra en "Editar" para tener el costo real.</p>')+'</div>'+
+    '')+
     (b.nota?'<p><b>Nota:</b> '+esc(b.nota)+'</p>':'');
   $('#bt-editar').onclick=protegido('editar este batch',function(){abrirBatchForm(b.id)});
+  $('#bt-envasar').onclick=protegido('registrar el envasado',function(){abrirEnvasado(b)});
+  Array.prototype.forEach.call(document.querySelectorAll('#v-batch [data-tab]'),function(t){t.onclick=function(){batchTab=t.dataset.tab;pintarBatch(b,ms)}});
   $('#bt-imprimir').onclick=function(){window.print()};
 }
 
