@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.17</title>
+<title>Chuyma Bodega · v3.18</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -414,6 +414,15 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
    <div><label for="t-tAgua">Temperatura del agua de la llave (°C)</label><input id="t-tAgua" data-t="tAgua" type="number" min="0" step="any" inputmode="decimal"></div>
   </div>
   <p class="nota">El aprovechamiento es qué parte del calor del gas llega al agua. Parte en 40 % y se corregirá con el registro de cilindros.</p>
+  <h4 style="margin:16px 0 0">Margen objetivo por formato</h4>
+  <div class="grid">
+   <div><label for="t-mg330">Botella 330 mL (%)</label><input id="t-mg330" data-t="mg330" type="number" min="0" max="95" step="any" inputmode="decimal"></div>
+   <div><label for="t-mg500">Botella 500 mL (%)</label><input id="t-mg500" data-t="mg500" type="number" min="0" max="95" step="any" inputmode="decimal"></div>
+   <div><label for="t-mg1000">Botella 1 L (%)</label><input id="t-mg1000" data-t="mg1000" type="number" min="0" max="95" step="any" inputmode="decimal"></div>
+   <div><label for="t-mgBarril">Barril (%)</label><input id="t-mgBarril" data-t="mgBarril" type="number" min="0" max="95" step="any" inputmode="decimal"></div>
+   <div><label for="t-mgMin">Margen mínimo permitido (%)</label><input id="t-mgMin" data-t="mgMin" type="number" min="0" max="95" step="any" inputmode="decimal"></div>
+  </div>
+  <p class="nota">Margen sobre el precio neto (sin IVA ni ILA). La Cava te sugiere precios con estos márgenes y te avisa si un precio queda bajo el mínimo.</p>
   <p id="t-err" class="err" hidden></p>
   <div class="pie"><button type="button" class="btn" id="t-cancelar">Cancelar</button><button type="submit" class="btn btn-p" id="t-ok">Guardar</button></div>
  </form>
@@ -432,7 +441,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.17";
+var APP_VERSION = "v3.18";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -460,7 +469,7 @@ function necesitaSDS(it){return it.requiereSDS!=null?!!it.requiereSDS:sdsPorDefe
 var ENVASES={'Botella 330 mL':330,'Botella 500 mL':500,'Botella 1 L':1000,'Barril 30 L slim':30000};
 var CONCEPTOS=['Gas','Agua','Mano de obra','CO₂','Otro'];
 var AUTO_CONC=['Gas','Agua','Mano de obra','Electricidad'];
-var TARIFAS_DEF={gasPrecio:21500,gasKg:11,aguaM3:1010,hora:5500,efic:40,tAgua:15};
+var TARIFAS_DEF={gasPrecio:21500,gasKg:11,aguaM3:1010,hora:5500,efic:40,tAgua:15,mg330:60,mg500:50,mg1000:45,mgBarril:30,mgMin:30};
 var PROC_DEF={macL:30,macT:73,lavL:30,lavT:78,preL:48,postL:43,enfL:80,limL:100,horas:8};
 var TARIFAS=Object.assign({},TARIFAS_DEF);
 var PCI_GAS=46,CALOR_EVAP=2.257,T_MOSTO=65;
@@ -1100,6 +1109,7 @@ $('#form-tar').addEventListener('submit',function(e){
   e.preventDefault();var v={},err=$('#t-err');
   Array.prototype.forEach.call(document.querySelectorAll('#form-tar [data-t]'),function(el){v[el.dataset.t]=num(el.value)});
   if(!(v.gasKg>0)||!(v.efic>0&&v.efic<=100)){err.textContent='Revisa los kg del cilindro y el aprovechamiento (entre 1 y 100 %).';err.hidden=false;return}
+  if(['mg330','mg500','mg1000','mgBarril'].some(function(k){return v[k]<v.mgMin||v[k]>=95})){err.textContent='Los márgenes por formato deben estar entre el mínimo ('+fmtN(v.mgMin)+' %) y 95 %.';err.hidden=false;return}
   confirmar('guardar las tarifas').then(function(){
     $('#t-ok').disabled=true;
     return api.guardarTarifas(v).then(function(){TARIFAS=Object.assign({},TARIFAS_DEF,v);$('#dlg-tar').close();toast('Tarifas guardadas')});
@@ -1206,6 +1216,10 @@ var IMP_IVA=0.19,IMP_ILA=0.205,FACTOR_BRUTO=1+IMP_IVA+IMP_ILA; // SII: IVA 19 %,
 var UBICACIONES=['Izq Arriba','Izq Media','Izq Baja','Izq Piso','Derecha Arriba','Derecha Media','Derecha Baja','Derecha Piso'];
 var DIAS_CRITICO=120,cvDatos=[],cvFiltro='todos',cvSel=null;
 function netoDe(bruto){return num(bruto)/FACTOR_BRUTO}
+function mgFmt(k){var ml=ENVASES[k]||0;return /^Barril/.test(k)?num(TARIFAS.mgBarril):ml<=355?num(TARIFAS.mg330):ml<=500?num(TARIFAS.mg500):num(TARIFAS.mg1000)}
+function brutoCon(costo,mg){return costo!=null&&mg<100?costo/(1-mg/100)*FACTOR_BRUTO:null}
+function sugerido(costo,k){var b=brutoCon(costo,mgFmt(k));return b!=null?Math.ceil(b/100)*100:null}
+function minimo(costo){return brutoCon(costo,num(TARIFAS.mgMin))}
 function stockFmt(e,k){return num((e.unidades||{})[k])-(e.salidas||[]).filter(function(x){return x.fmt===k}).reduce(function(s2,x){return s2+num(x.cantidad)},0)}
 function ultimoPrecio(estilo,k){var r=null,f='';batches.forEach(function(b){if(String(b.nombre||'').toLowerCase()!==String(estilo||'').toLowerCase())return;(b.envasados||[]).forEach(function(e){var p=e.cava&&e.cava.precios&&num(e.cava.precios[k]);if(p&&String(e.fecha)>=f){r=p;f=String(e.fecha)}})});return r}
 function ultimaUbic(){var r='',f='';batches.forEach(function(b){(b.envasados||[]).forEach(function(e){if(e.cava&&e.cava.ubicacion&&String(e.fecha)>=f){r=e.cava.ubicacion;f=String(e.fecha)}})});return r}
@@ -1246,17 +1260,19 @@ function pintarCava(){
       '<td class="n"><b>'+fmtN(d.stock)+'</b></td>'+
       '<td class="n"'+(d.dias>DIAS_CRITICO?' style="color:var(--red);font-weight:700"':'')+'>'+(d.dias!=null?d.dias+' d':'—')+(d.e.consumoPref&&d.e.consumoPref<hoy()?'<br><small style="color:var(--red)">vencido</small>':'')+'</td>'+
       '<td class="n">'+(d.costo!=null?fmtP(d.costo):'—')+'</td>'+
-      '<td class="n">'+(d.precio?fmtP(d.precio)+'<br><small style="color:var(--hint)">neto '+fmtP(neto)+'</small>':'<span style="color:var(--warn)">Falta</span>')+'</td>'+
-      '<td class="n">'+(mg!=null?'<b style="color:'+(mg<0?'var(--red)':'var(--green)')+'">'+fmtP(mg)+'</b><br><small style="color:var(--hint)">'+Math.round(mg/neto*100)+' %</small>':'—')+'</td>'+
+      '<td class="n">'+(d.precio?fmtP(d.precio)+'<br><small style="color:'+(d.costo!=null&&d.precio<minimo(d.costo)?'var(--red);font-weight:700">bajo el mínimo':'var(--hint)">neto '+fmtP(neto))+'</small>':'<span style="color:var(--warn)">Falta</span>')+'</td>'+
+      '<td class="n">'+(d.costo!=null?fmtP(sugerido(d.costo,d.k))+'<br><small style="color:var(--hint)">'+fmtN(mgFmt(d.k))+' %</small>':'—')+'</td>'+
+      '<td class="n">'+(mg!=null?'<b style="color:'+(mg/neto*100<num(TARIFAS.mgMin)?'var(--red)':'var(--green)')+'">'+fmtP(mg)+'</b><br><small style="color:var(--hint)">'+Math.round(mg/neto*100)+' %</small>':'—')+'</td>'+
       '<td class="n no-print"><div class="acciones" style="justify-content:flex-end"><button class="btn'+(!d.precio||!d.ubic?' btn-a':'')+'" type="button" data-cved="'+i+'">'+(!d.precio||!d.ubic?'Completar':'Editar')+'</button>'+(d.stock>0?'<button class="btn" type="button" data-cvrt="'+i+'">Salida</button>':'')+'</div></td></tr>';
   }).join('');
   $('#cv-print-sub').textContent='Al '+fmtF(hoy());
   $('#cv-cuerpo').innerHTML='<div class="metricas">'+mets+'</div>'+
     (falt.length?'<div class="costo-prev no-print" style="margin:0 0 14px">'+(falt.length===1?'1 lote necesita':falt.length+' lotes necesitan')+' ubicación o precio de venta. Toca <b>Completar</b>: solo te pedirá lo que falta.</div>':'')+
     '<div class="chips no-print">'+chips+'</div>'+
-    (lista.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Cerveza</th><th>Ubicación</th><th class="n">Stock</th><th class="n">Edad</th><th class="n">Costo u.</th><th class="n">Precio u.</th><th class="n">Margen u.</th><th class="no-print"></th></tr></thead><tbody>'+filas+'</tbody></table></div>':
+    (lista.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Cerveza</th><th>Ubicación</th><th class="n">Stock</th><th class="n">Edad</th><th class="n">Costo u.</th><th class="n">Precio u.</th><th class="n">Sugerido</th><th class="n">Margen u.</th><th class="no-print"></th></tr></thead><tbody>'+filas+'</tbody></table></div>':
       '<div class="vacio">'+(cvDatos.length?'No hay lotes con este filtro.':'La cava está vacía. Se llena sola cuando registras un envasado en un batch.')+'</div>')+
-    '<p class="nota">Margen = precio neto − costo por unidad. Neto = bruto ÷ '+String(FACTOR_BRUTO).replace('.',',')+' (IVA 19 % + ILA 20,5 %, SII). Edad = días desde el envasado; sobre '+DIAS_CRITICO+' días se marca en rojo.</p>'+
+    (hay.some(function(d){return d.precio&&d.costo!=null&&d.precio<minimo(d.costo)})?'<div class="costo-prev" style="margin:10px 0;color:var(--red)">⚠️ Hay precios bajo tu margen mínimo de '+fmtN(TARIFAS.mgMin)+' %. Revisa los marcados en rojo.</div>':'')+
+    '<p class="nota">Margen = precio neto − costo por unidad. Sugerido = precio bruto con el margen objetivo de Tarifas, redondeado a $100. Neto = bruto ÷ '+String(FACTOR_BRUTO).replace('.',',')+' (IVA 19 % + ILA 20,5 %, SII). Edad = días desde el envasado; sobre '+DIAS_CRITICO+' días se marca en rojo.</p>'+
     '<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Salidas del mes</h3>'+(sal.length?'<div class="scroll"><table class="tabla"><thead><tr><th>Fecha</th><th>Cerveza</th><th>Lote</th><th class="n">Cant.</th><th>Motivo</th></tr></thead><tbody>'+sal.map(function(y){return '<tr><td>'+fmtF(y.x.fecha)+'</td><td>'+esc(y.d.b.nombre||'')+' · '+esc(y.d.k)+'</td><td class="lote-cod">'+esc(y.d.e.lote)+'</td><td class="n">'+fmtN(y.x.cantidad)+'</td><td>'+esc(y.x.motivo||'')+(y.x.comentario?'<br><small style="color:var(--hint)">'+esc(y.x.comentario)+'</small>':'')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="nota">Sin salidas este mes.</p>')+'</div>';
   Array.prototype.forEach.call(document.querySelectorAll('[data-cvf]'),function(c){c.onclick=function(){cvFiltro=c.dataset.cvf;pintarCava()}});
   Array.prototype.forEach.call(document.querySelectorAll('[data-cved]'),function(c){c.onclick=protegido('editar la cava',function(){abrirCvEdit(lista[+c.dataset.cved])})});
@@ -1275,14 +1291,16 @@ function abrirCvEdit(d){
   $('#cv-ubic-otra-box').hidden=true;$('#cv-ubic-otra').value='';
   var cus={};cvDatos.forEach(function(x){if(x.e===e)cus[x.k]=x.costo});
   $('#cv-precios').innerHTML=Object.keys(e.unidades||{}).map(function(k,i){var pv=(c.precios&&num(c.precios[k]))||ultimoPrecio(d.b.nombre,k)||'';
-    return '<div class="campo"><label for="cv-p'+i+'">Precio de venta bruto · '+esc(k)+'</label><input id="cv-p'+i+'" data-pfmt="'+esc(k)+'" data-costo="'+(cus[k]!=null?cus[k]:'')+'" type="number" min="0" step="1" inputmode="numeric" value="'+pv+'"><small class="nota" data-pprev></small></div>'}).join('');
+    if(!pv&&cus[k]!=null)pv=sugerido(cus[k],k);
+    return '<div class="campo"><label for="cv-p'+i+'">Precio de venta bruto · '+esc(k)+'</label><input id="cv-p'+i+'" data-pfmt="'+esc(k)+'" data-costo="'+(cus[k]!=null?cus[k]:'')+'" type="number" min="0" step="1" inputmode="numeric" value="'+pv+'">'+(cus[k]!=null?'<small class="nota">Sugerido <b>'+fmtP(sugerido(cus[k],k))+'</b> ('+fmtN(mgFmt(k))+' %) · mínimo '+fmtP(Math.ceil(minimo(cus[k])))+' ('+fmtN(TARIFAS.mgMin)+' %) <button type="button" class="btn-link" data-usar="'+sugerido(cus[k],k)+'" style="color:var(--amber-d);font-weight:600">Usar sugerido</button></small><br>':'')+'<small class="nota" data-pprev></small></div>'}).join('');
   prevPrecios();$('#cv-err').hidden=true;$('#dlg-cv').showModal();
   var foco=!$('#cv-ubic').value?$('#cv-ubic'):Array.prototype.find.call(document.querySelectorAll('#cv-precios input'),function(x){return !x.value});if(foco)setTimeout(function(){foco.focus()},50);
 }
 function prevPrecios(){Array.prototype.forEach.call(document.querySelectorAll('#cv-precios input'),function(el){var p=num(el.value),c=el.dataset.costo===''?null:num(el.dataset.costo),sm=el.parentNode.querySelector('[data-pprev]');
   if(!p){sm.textContent=c!=null?'Costo por unidad: '+fmtP(c):'';return}var n=netoDe(p);
-  sm.innerHTML='Neto '+fmtP(n)+' · IVA '+fmtP(n*IMP_IVA)+' · ILA '+fmtP(n*IMP_ILA)+(c!=null?' · <b>margen '+fmtP(n-c)+' ('+Math.round((n-c)/n*100)+' %)</b>':'')})}
+  sm.innerHTML='Neto '+fmtP(n)+' · IVA '+fmtP(n*IMP_IVA)+' · ILA '+fmtP(n*IMP_ILA)+(c!=null?' · <b style="color:'+((n-c)/n*100<num(TARIFAS.mgMin)?'var(--red)':'inherit')+'">margen '+fmtP(n-c)+' ('+Math.round((n-c)/n*100)+' %)'+((n-c)/n*100<num(TARIFAS.mgMin)?' — bajo el mínimo':'')+'</b>':'')})}
 $('#cv-precios').addEventListener('input',prevPrecios);
+$('#cv-precios').addEventListener('click',function(e){var b=e.target.closest('[data-usar]');if(!b)return;var inp=b.closest('.campo').querySelector('input');inp.value=b.dataset.usar;prevPrecios()});
 $('#cv-ubic').addEventListener('change',function(){$('#cv-ubic-otra-box').hidden=this.value!=='__otra';if(this.value==='__otra')$('#cv-ubic-otra').focus()});
 $('#cv-cancelar').addEventListener('click',function(){$('#dlg-cv').close()});
 $('#form-cv').addEventListener('submit',function(ev){
