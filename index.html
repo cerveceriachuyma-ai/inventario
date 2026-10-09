@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.11</title>
+<title>Chuyma Bodega · v3.12</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -368,7 +368,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.11";
+var APP_VERSION = "v3.12";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -393,7 +393,7 @@ var TIPOS_DOC = ['Ficha técnica','Certificado de análisis (COA)','Hoja de segu
 var SDS = 'Hoja de seguridad (SDS)';
 function sdsPorDefecto(it){return it.categoria==='laboratorio'||(it.categoria==='limpieza'&&it.tipo==='Químico')}
 function necesitaSDS(it){return it.requiereSDS!=null?!!it.requiereSDS:sdsPorDefecto(it)}
-var ENVASES={'Botella 330 mL':330,'Botella 500 mL':500,'Lata 355 mL':355,'Lata 473 mL':473,'Barril 20 L':20000,'Barril 30 L':30000,'Barril 50 L':50000};
+var ENVASES={'Botella 330 mL':330,'Botella 500 mL':500,'Botella 1 L':1000,'Lata 355 mL':355,'Lata 473 mL':473,'Barril 20 L':20000,'Barril 30 L':30000,'Barril 50 L':50000};
 var CONCEPTOS=['Gas','Agua','Mano de obra','CO₂','Otro'];
 var AUTO_CONC=['Gas','Agua','Mano de obra','Electricidad'];
 var TARIFAS_DEF={gasPrecio:21500,gasKg:11,aguaM3:1010,hora:5500,efic:40,tAgua:15};
