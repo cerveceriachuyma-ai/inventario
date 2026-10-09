@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.15</title>
+<title>Chuyma Bodega · v3.16</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -396,7 +396,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.15";
+var APP_VERSION = "v3.16";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -421,7 +421,7 @@ var TIPOS_DOC = ['Ficha técnica','Certificado de análisis (COA)','Hoja de segu
 var SDS = 'Hoja de seguridad (SDS)';
 function sdsPorDefecto(it){return it.categoria==='laboratorio'||(it.categoria==='limpieza'&&it.tipo==='Químico')}
 function necesitaSDS(it){return it.requiereSDS!=null?!!it.requiereSDS:sdsPorDefecto(it)}
-var ENVASES={'Botella 330 mL':330,'Botella 500 mL':500,'Botella 1 L':1000,'Lata 355 mL':355,'Lata 473 mL':473,'Barril 20 L':20000,'Barril 30 L':30000,'Barril 50 L':50000};
+var ENVASES={'Botella 330 mL':330,'Botella 500 mL':500,'Botella 1 L':1000,'Barril 30 L slim':30000};
 var CONCEPTOS=['Gas','Agua','Mano de obra','CO₂','Otro'];
 var AUTO_CONC=['Gas','Agua','Mano de obra','Electricidad'];
 var TARIFAS_DEF={gasPrecio:21500,gasKg:11,aguaM3:1010,hora:5500,efic:40,tAgua:15};
@@ -1154,14 +1154,14 @@ function costosFormato(b,ms,cplLiq){
   keys.sort(function(a,c){return (ENVASES[a]||bot[a].ml||0)-(ENVASES[c]||bot[c].ml||0)});
   return keys.map(function(k){var r=bot[k],ml=ENVASES[k]||r.ml,barril=/^Barril/.test(k),lata=r?r.lata:/^Lata/.test(k);
     var cuEnv=null;
-    if(barril)cuEnv=0;
+    if(barril)cuEnv=null;
     else if(r&&r.q&&!r.sin)cuEnv=r.c/r.q;
     else cuEnv=cuInv(function(i){return (i.tipo==='Botellas'||i.tipo==='Latas')&&formatoDe(i)===k});
     var piezas=barril?0:(lata?cuTapL:cuTap),eq=barril?0:cuEti;
     var envase=(cuEnv==null||(!barril&&(piezas==null||eq==null)))?null:cuEnv+(piezas||0)+(eq||0);
     var cerveza=cplLiq!=null?cplLiq*ml/1000:null;
     var unidad=(envase!=null&&cerveza!=null)?cerveza+envase:null;
-    return {k:k,ml:ml,unidades:r?r.q:null,cerveza:cerveza,envase:envase,unidad:unidad,litro:unidad!=null?unidad/(ml/1000):null,total:(unidad!=null&&r&&r.q)?unidad*r.q:null,barril:barril,faltan:!barril&&(cuEnv==null?(lata?'lata':'botella'):piezas==null?(lata?'tapa de lata':'tapa'):eq==null?'etiqueta':'')};
+    return {k:k,ml:ml,unidades:r?r.q:null,cerveza:cerveza,envase:envase,unidad:unidad,litro:unidad!=null?unidad/(ml/1000):null,total:(unidad!=null&&r&&r.q)?unidad*r.q:null,barril:barril,faltan:barril?'precio del barril':(cuEnv==null?(lata?'lata':'botella'):piezas==null?(lata?'tapa de lata':'tapa'):eq==null?'etiqueta':'')};
   });
 }
 
@@ -1273,7 +1273,7 @@ function pintarBatch(b,ms){
     tf='<div class="bloque"><h3 style="margin:0 0 8px;font-size:18px">Costo por formato</h3>'+(cplLiq==null?'<p class="nota">Agrega el volumen envasado en "Editar" para calcular el costo por formato.</p>':
       '<div class="scroll"><table class="tabla"><thead><tr><th>Formato</th><th class="n">Unidades</th><th class="n">Cerveza</th><th class="n">Envase</th><th class="n">Por unidad</th><th class="n">Por litro</th><th class="n">Total</th></tr></thead><tbody>'+
       fm.map(function(f){return '<tr><td>'+esc(f.k)+'</td><td class="n">'+(f.unidades?fmtN(f.unidades):'—')+'</td><td class="n">'+fmtP(f.cerveza)+'</td><td class="n">'+(f.envase!=null?fmtP(f.envase):'Falta '+f.faltan)+'</td><td class="n"><b>'+fmtP(f.unidad)+'</b></td><td class="n">'+fmtP(f.litro)+'</td><td class="n">'+(f.total!=null?fmtP(f.total):(f.unidad!=null&&vol&&Math.floor(vol*1000/f.ml)>0?'≈ '+fmtP(f.unidad*Math.floor(vol*1000/f.ml))+'<br><small style="color:var(--hint)">'+fmtN(Math.floor(vol*1000/f.ml))+' u. si todo va aquí</small>':'—'))+'</td></tr>'}).join('')+
-      '</tbody></table></div><p class="nota">Envase = botella o lata + tapa + etiqueta (una por unidad)'+(fm.some(function(f){return f.barril})?'; los barriles se consideran retornables, sin costo de envase':'')+'. Si un formato no tiene unidades, se calcula con los precios de tu bodega: registra en este batch el uso de botellas, tapas y etiquetas al envasar.</p>'+
+      '</tbody></table></div><p class="nota">Envase = botella o lata + tapa + etiqueta (una por unidad)'+(fm.some(function(f){return f.barril})?'. El costo por llenado del barril (desgaste, limpieza y CO₂) se agregará cuando registres tus barriles':'')+'. Si un formato no tiene unidades, se calcula con los precios de tu bodega: registra en este batch el uso de botellas, tapas y etiquetas al envasar.</p>'+
       (litrosEnv&&vol&&Math.abs(litrosEnv-vol)/vol>0.05?'<p class="nota" style="color:var(--warn)">⚠️ Las botellas registradas suman '+fmtN(Math.round(litrosEnv*10)/10)+' L, pero el volumen envasado dice '+fmtN(vol)+' L. Revisa una de las dos cifras.</p>':''))+'</div>';
   }
   var envs=(b.envasados||[]).slice().sort(function(a,c){return String(a.fecha).localeCompare(String(c.fecha))});
