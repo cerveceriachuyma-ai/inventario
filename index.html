@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.10</title>
+<title>Chuyma Bodega · v3.11</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -368,7 +368,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.10";
+var APP_VERSION = "v3.11";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -646,7 +646,10 @@ $('#lista').addEventListener('click',function(e){var f=e.target.closest('[data-i
 var PENDIENTES=[
   {nombre:'Botella 330 mL',variable:'330 mL',proveedor:'Cristalerías Toro',cantidadComprada:30,precioTotal:6990,minimo:30,notaCompra:'Precio $233 c/u (se compra en paquetes de 30). Stock provisorio: contar las botellas reales y ajustar.'},
   {nombre:'Botella 500 mL',variable:'500 mL',proveedor:'Prost',cantidadComprada:65,precioTotal:21700,minimo:20,notaCompra:'Compra de 65 botellas, $334 c/u. Stock provisorio: contar las botellas reales y ajustar.'},
-  {nombre:'Botella 1 L',variable:'1 L',proveedor:'HST Tienda',cantidadComprada:112,precioTotal:28000,minimo:0,notaCompra:'Comprada en oferta a $250 c/u (boleta). Precio normal: $857 c/u con boleta. Reservadas para edición aniversario.'}
+  {nombre:'Botella 1 L',variable:'1 L',proveedor:'HST Tienda',cantidadComprada:112,precioTotal:28000,minimo:0,notaCompra:'Comprada en oferta a $250 c/u (boleta). Precio normal: $857 c/u con boleta. Reservadas para edición aniversario.'},
+  {nombre:'Tapa corona 26 mm',tipo:'Tapas Corona',variable:'26 mm',proveedor:'Mundo Cervecero',cantidadComprada:1000,precioTotal:19900,minimo:100,notaCompra:'Bolsa de 1.000 tapas por $19.900 con boleta ($19,90 c/u). Sirve para botellas de 330 mL, 500 mL y 1 L. Stock provisorio: contar y ajustar.'},
+  {nombre:'Etiqueta Pale Ale',tipo:'Etiquetas',variable:'Pale Ale',proveedor:'Publibor',cantidadComprada:150,precioTotal:30345,minimo:30,notaCompra:'Pagado $170 c/u por transferencia, sin documento tributario. Se suma 19 % de IVA por criterio conservador ($202,30 c/u).'},
+  {nombre:'Etiqueta Amber',tipo:'Etiquetas',variable:'Amber',proveedor:'Publibor',cantidadComprada:150,precioTotal:30345,minimo:30,notaCompra:'Pagado $170 c/u por transferencia, sin documento tributario. Se suma 19 % de IVA por criterio conservador ($202,30 c/u).'}
 ];
 function pendientesFaltan(){return PENDIENTES.filter(function(x){return !inv.some(function(i){return String(i.nombre||'').trim().toLowerCase()===x.nombre.toLowerCase()})})}
 function pintarPendientes(){
@@ -656,10 +659,10 @@ function pintarPendientes(){
 }
 function registrarPendientes(){
   var f=pendientesFaltan();if(!f.length)return;
-  var txt='Se registrarán estos insumos (Secos y gas · Botellas · unidades · Boleta):\n\n'+f.map(function(x){return '• '+x.nombre+' — '+x.proveedor+'\n   '+x.cantidadComprada+' unidades por '+fmtP(x.precioTotal)+' = '+fmtPu(x.precioTotal/x.cantidadComprada)+' c/u'}).join('\n')+'\n\nEl stock inicial será la cantidad comprada; después puedes ajustarlo. ¿Continuar?';
+  var txt='Se registrarán estos insumos (Secos y gas · unidades · Boleta):\n\n'+f.map(function(x){return '• '+x.nombre+' ('+(x.tipo||'Botellas')+') — '+x.proveedor+'\n   '+x.cantidadComprada+' unidades por '+fmtP(x.precioTotal)+' = '+fmtPu(x.precioTotal/x.cantidadComprada)+' c/u'}).join('\n')+'\n\nEl stock inicial será la cantidad comprada; después puedes ajustarlo. ¿Continuar?';
   if(!confirm(txt))return;
   f.reduce(function(pr,x){return pr.then(function(){
-    var q={categoria:'empaque',tipo:'Botellas',variable:x.variable,nombre:x.nombre,lote:'S/L',proveedor:x.proveedor,tipoDocumento:'Boleta',documentoCompra:'',fechaIngreso:hoy(),unidadMedida:'unidades',cantidadComprada:x.cantidadComprada,precioTotal:x.precioTotal,minimo:x.minimo,fechaVencimiento:'',diasCriticos:0,requiereSDS:false,notaCompra:x.notaCompra};
+    var q={categoria:'empaque',tipo:x.tipo||'Botellas',variable:x.variable,nombre:x.nombre,lote:'S/L',proveedor:x.proveedor,tipoDocumento:'Boleta',documentoCompra:'',fechaIngreso:hoy(),unidadMedida:'unidades',cantidadComprada:x.cantidadComprada,precioTotal:x.precioTotal,minimo:x.minimo,fechaVencimiento:'',diasCriticos:0,requiereSDS:false,notaCompra:x.notaCompra};
     q.costoUnitario=costoUnit(q);q.stock=x.cantidadComprada;q.codigoUnico=prefijo(x.nombre)+'-'+Math.floor(10000+Math.random()*90000);
     return api.crear(q,{nombreInsumo:q.nombre,loteInsumo:q.lote,codigoUnicoInsumo:q.codigoUnico,tipo:'ingreso',cantidadUsada:q.stock,delta:q.stock,unidadMedida:q.unidadMedida,fechaConsumo:q.fechaIngreso,loteBrewfather:'',nota:'Ingreso inicial',costoUnitario:q.costoUnitario,costoTotal:q.costoUnitario*q.stock});
   })},Promise.resolve()).then(function(){toast(f.length===1?'1 insumo registrado':f.length+' insumos registrados')})
