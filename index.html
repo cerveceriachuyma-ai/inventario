@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.18</title>
+<title>Chuyma Bodega · v3.19</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -442,7 +442,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.18";
+var APP_VERSION = "v3.19";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -452,9 +452,11 @@ var FIREBASE_CONFIG = {
   appId: "1:677439195293:web:50b624de9e0c877c89ec74"
 };
 
+/* v3.19: años de cosecha de lúpulo (en blanco + año actual y 5 anteriores) */
+var ANIOS_COSECHA=(function(){var y=new Date().getFullYear(),r=[''];for(var i=0;i<6;i++)r.push(String(y-i));return r})();
 var CATS = {
   malta:{n:'Maltas',u:'Malta',d:['color','Color',' EBC'],f:[['origen','Origen','text'],['color','Color (EBC)','text']]},
-  lupulo:{n:'Lúpulos',u:'Lúpulo',d:['alfa','Alfa-ácidos',' %'],f:[['formato','Formato',['Pellets (T90)','Plug','Flor','Cryo']],['alfa','Alfa-ácidos (%)','text']]},
+  lupulo:{n:'Lúpulos',u:'Lúpulo',d:['alfa','Alfa-ácidos',' %'],f:[['formato','Formato',['Pellets (T90)','Plug','Flor','Cryo']],['alfa','Alfa-ácidos (%)','text'],['cosecha','Año de cosecha',ANIOS_COSECHA]]},
   levadura:{n:'Levaduras',u:'Levadura',d:['formato','Formato',''],f:[['laboratorio','Laboratorio de la cepa','text'],['formato','Formato',['Seca','Líquida','Barro']]]},
   clarificante:{n:'Clarificantes',u:'Clarificante',d:['uso','Uso',''],f:[['uso','Tipo de uso',['Hervido','Maduración']],['formato','Formato',['Tabletas','Polvo','Líquido']]]},
   laboratorio:{n:'Laboratorio',u:'Laboratorio',d:['sub','Tipo',''],f:[['sub','Tipo',['Insumo','Reactivo','Solución Preparada','Estándar','Otro']],['fechaPreparacion','Fecha de preparación','date']]},
