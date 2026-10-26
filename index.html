@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Chuyma Bodega · v3.19</title>
+<title>Chuyma Bodega · v3.20</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -179,7 +179,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
   <section id="v-lista">
    <div class="barra">
-    <input id="buscar" type="search" placeholder="Buscar por nombre, lote, código o proveedor" aria-label="Buscar insumo">
+    <input id="buscar" type="search" placeholder="Buscar por nombre, lote, código, proveedor o ubicación" aria-label="Buscar insumo">
     <button class="btn" id="b-scan" type="button">Escanear</button>
     <button class="btn btn-p" id="b-nuevo" type="button">Nuevo</button>
    </div>
@@ -228,6 +228,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
      <legend>Control</legend>
      <div class="grid">
       <div id="f-stock-box"><label for="f-stock">Stock actual</label><input id="f-stock" readonly><p class="nota">Se cambia con "Registrar uso" o "Ajustar stock".</p></div>
+      <div><label for="f-ubic">Ubicación</label><select id="f-ubic"></select><input id="f-ubic-nueva" hidden placeholder="Ej.: Bodega seca, repisa 2" style="margin-top:8px"></div>
       <div><label for="f-minimo">Stock mínimo</label><input id="f-minimo" type="number" step="any" min="0" inputmode="decimal"></div>
       <div><label for="f-venc">Fecha de vencimiento</label><input id="f-venc" type="date"></div>
       <div><label for="f-dias">Vida útil en bodega (días)</label><input id="f-dias" type="number" min="0" inputmode="numeric" placeholder="180"></div>
@@ -442,7 +443,7 @@ dialog .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 <div id="toast" hidden></div>
 
 <script>
-var APP_VERSION = "v3.19";
+var APP_VERSION = "v3.20";
 var FIREBASE_CONFIG = {
   apiKey: "AIzaSyBSaIzbcFiyTF1zy9_9Z97ZSPfL322xO24",
   authDomain: "inventariochuyma-da052.firebaseapp.com",
@@ -542,6 +543,7 @@ function crearApiFirebase(){
     vigilarConfig:function(cb,err){return CFG.onSnapshot(function(s){cb(lista(s))},err)},
     guardarConfig:function(id,d){return CFG.doc(id).set(d,{merge:true})},
     quitarHuerfano:function(t){return CFG.doc('mantenimiento').set({huerfanos:FV.arrayRemove(t)},{merge:true})},
+    agregarUbicacion:function(u){return CFG.doc('ubicaciones').set({lista:FV.arrayUnion(u)},{merge:true})},
     vigilarCava:function(cb,err){return CAVA.onSnapshot(function(s){cb(lista(s))},err)},
     crearLoteCava:function(lote,d){d.creadoEn=FV.serverTimestamp();return CAVA.doc(lote).set(d)},
     actualizarLoteCava:function(lote,d){return CAVA.doc(lote).update(d)},
@@ -651,6 +653,7 @@ function crearApiDemo(){
   return {
     vigilarConfig:function(cb){kcbs.push(cb);setTimeout(emitirK,0);return function(){}},
     guardarConfig:function(id,d){var c=cfg.find(function(x){return x.id===id});if(c)Object.assign(c,cp(d));else cfg.push(Object.assign({id:id},cp(d)));emitirK();return ok()},
+    agregarUbicacion:function(u){var c=cfg.find(function(x){return x.id==='ubicaciones'});if(!c){c={id:'ubicaciones',lista:[]};cfg.push(c)}if(c.lista.indexOf(u)<0)c.lista.push(u);emitirK();return ok()},
     quitarHuerfano:function(t){var c=cfg.find(function(x){return x.id==='mantenimiento'});if(c)c.huerfanos=(c.huerfanos||[]).filter(function(h){return h!==t});emitirK();return ok()},
     vigilarCava:function(cb){ccbs.push(cb);setTimeout(emitirC,0);return function(){}},
     crearLoteCava:function(lote,d){cava=cava.filter(function(c){return c.id!==lote});cava.push(Object.assign({id:lote},cp(d)));emitirC();return ok()},
@@ -695,7 +698,7 @@ if(esDemo) $('#aviso-demo').hidden=false;
 
 var inv=[],cat='todas',vista='lista',actual=null,desuscribir=null,batches=[],desBatches=null,batchesErr=false,batchActual=null,batchEdit=null;
 /* v3.18 · MANT: estado del mantenimiento de datos (config/mantenimiento) · cavaLotes: colección "cava" */
-var MANT_VERSION=1,MANT={},cfgCargada=false,tarifasViejas=null,tarifasNuevas=false,cavaLotes=[],cavaErr=false,desCava=null,desCfg=null,cfgErr=false;
+var MANT_VERSION=1,MANT={},cfgCargada=false,tarifasViejas=null,tarifasNuevas=false,cavaLotes=[],cavaErr=false,desCava=null,desCfg=null,cfgErr=false,UBIC_GUARDADAS=[];
 
 /* ---------- Confirmación con contraseña (10 min) ---------- */
 var VALIDEZ=10*60*1000,confirmadoHasta=0,pwOk=null,pwNo=null;
@@ -760,7 +763,7 @@ api.onAuth(function(user){
   if(user){
     desCfg=api.vigilarConfig(function(d){
       var m=d.find(function(x){return x.id==='mantenimiento'}),t=d.find(function(x){return x.id==='tarifas'});
-      MANT=m||{};cfgCargada=true;tarifasNuevas=!!t;
+      MANT=m||{};cfgCargada=true;tarifasNuevas=!!t;var ub=d.find(function(x){return x.id==='ubicaciones'});UBIC_GUARDADAS=ub&&Array.isArray(ub.lista)?ub.lista:[];
       TARIFAS=Object.assign({},TARIFAS_DEF,t?t.valores:(tarifasViejas||{}));
       revisarAvisoMant();if(vista==='batches')pintarBatches();
     },function(){cfgCargada=true;cfgErr=true;revisarAvisoMant()});
@@ -789,13 +792,13 @@ function pintarLista(){
   var datos=inv.filter(function(i){
     if(cat!=='todas'&&i.categoria!==cat)return false;
     if(!q)return true;
-    return [i.nombre,i.lote,i.codigoUnico,i.proveedor,i.documentoCompra].some(function(v){return String(v==null?'':v).toLowerCase().indexOf(q)>=0});
+    return [i.nombre,i.lote,i.codigoUnico,i.proveedor,i.documentoCompra,i.ubicacion].some(function(v){return String(v==null?'':v).toLowerCase().indexOf(q)>=0});
   }).map(function(i){return {i:i,a:alertasDe(i)}});
   datos.sort(function(x,y){var px=x.a.some(function(a){return a[0]==='danger'})?0:x.a.length?1:2,py=y.a.some(function(a){return a[0]==='danger'})?0:y.a.length?1:2;return px-py||String(x.i.nombre||'').localeCompare(String(y.i.nombre||''),'es')});
   if(!datos.length){$('#lista').innerHTML='<div class="vacio">'+(inv.length?'Ningún insumo coincide con la búsqueda.':'Tu bodega está vacía. Presiona "Nuevo" para ingresar el primer insumo.')+'</div>';return}
   $('#lista').innerHTML=datos.map(function(d){
     var i=d.i,bajo=d.a.some(function(a){return a[1]==='Stock bajo'});
-    return '<button class="fila" type="button" data-id="'+esc(i.id)+'"><div><strong>'+esc(i.nombre||'(sin nombre)')+'</strong><small>'+esc(catN(i.categoria))+' · Lote '+esc(i.lote||'S/L')+'</small></div><div class="der"><span class="cant'+(bajo?' rojo':'')+'">'+fmtN(i.stock)+' '+esc(uni(i))+'</span>'+d.a.map(function(a){return '<span class="tag t-'+a[0]+'">'+a[1]+'</span>'}).join('')+'</div></button>';
+    return '<button class="fila" type="button" data-id="'+esc(i.id)+'"><div><strong>'+esc(i.nombre||'(sin nombre)')+'</strong><small>'+esc(catN(i.categoria))+' · Lote '+esc(i.lote||'S/L')+(i.ubicacion?' · '+esc(i.ubicacion):'')+'</small></div><div class="der"><span class="cant'+(bajo?' rojo':'')+'">'+fmtN(i.stock)+' '+esc(uni(i))+'</span>'+d.a.map(function(a){return '<span class="tag t-'+a[0]+'">'+a[1]+'</span>'}).join('')+'</div></button>';
   }).join('');
 }
 $('#lista').addEventListener('click',function(e){var f=e.target.closest('[data-id]');if(f)abrirPerfil(f.dataset.id)});
@@ -844,7 +847,7 @@ function pintarPerfil(id,cargarHist){
   mets+='<div class="met"><span>Costo por '+esc(u||'compra')+'</span><b>'+(cu!=null?fmtPu(cu):(faltaCantidad(it)?'Falta cantidad':(cr!=null?fmtP(cr):'Sin precio')))+'</b>'+(faltaCantidad(it)?'<small>Escribe la cantidad comprada en "Editar" para calcular el costo por '+esc(u||'unidad')+'</small>':(cr!=null?'<small>'+(it.tipoDocumento==='Factura'?'Neto, sin IVA':'Con IVA (boleta)')+'</small>':''))+'</div>';
   if(c&&it[c.d[0]])mets+='<div class="met"><span>'+c.d[1]+'</span><b>'+esc(it[c.d[0]])+esc(c.d[2])+'</b></div>';
   if(it.fechaIngreso){var db=dias(it.fechaIngreso,hoy());mets+='<div class="met"><span>En bodega</span><b>'+db+' días</b>'+(num(it.diasCriticos)?'<small>Vida útil '+fmtN(it.diasCriticos)+' días</small>':'')+'</div>'}
-  var dt=[['Proveedor',esc(it.proveedor||'—')],['Documento',esc((it.tipoDocumento||'')+' '+(it.documentoCompra||'')).trim()||'—'],['Total pagado',it.precioTotal?fmtP(num(it.precioTotal)):'Sin precio'],['Cantidad comprada',it.cantidadComprada?fmtN(it.cantidadComprada)+' '+esc(u):'—'],['Ingreso',fmtF(it.fechaIngreso)],['Vencimiento',fmtF(venc(it))]];
+  var dt=[['Ubicación',it.ubicacion?'<b>'+esc(it.ubicacion)+'</b>':'<span style="color:var(--warn)">Sin ubicación · agrégala en "Editar"</span>'],['Proveedor',esc(it.proveedor||'—')],['Documento',esc((it.tipoDocumento||'')+' '+(it.documentoCompra||'')).trim()||'—'],['Total pagado',it.precioTotal?fmtP(num(it.precioTotal)):'Sin precio'],['Cantidad comprada',it.cantidadComprada?fmtN(it.cantidadComprada)+' '+esc(u):'—'],['Ingreso',fmtF(it.fechaIngreso)],['Vencimiento',fmtF(venc(it))]];
   if(it.notaCompra)dt.push(['Notas de la compra','<span style="white-space:pre-line">'+esc(it.notaCompra)+'</span>']);
   if(c)c.f.forEach(function(f){if(f[0]!==c.d[0]&&it[f[0]])dt.push([f[1],f[2]==='date'?fmtF(it[f[0]]):esc(it[f[0]])])});
   $('#v-perfil').innerHTML=
@@ -1003,6 +1006,13 @@ function previewCosto(){
 ['#f-precio','#f-tipodoc','#f-cantidad','#f-unidad'].forEach(function(s){$(s).addEventListener('input',previewCosto)});
 
 $('#b-nuevo').addEventListener('click',function(){abrirForm(null)});
+/* v3.20: ubicación de cada insumo. Los lugares se van creando desde el formulario ("+ Nueva ubicación…")
+   y quedan guardados en config/ubicaciones; también se suman los que ya usan los insumos. */
+function ubicaciones(){var r={};UBIC_GUARDADAS.concat(inv.map(function(i){return i.ubicacion})).forEach(function(u){u=String(u||'').trim();if(u)r[u.toLowerCase()]=r[u.toLowerCase()]||u});return Object.keys(r).map(function(k){return r[k]}).sort(function(a,b){return a.localeCompare(b,'es')})}
+function pintarUbic(v){var ls=ubicaciones();if(v&&ls.indexOf(v)<0)ls.unshift(v);
+  $('#f-ubic').innerHTML='<option value="">— sin ubicación —</option>'+ls.map(function(u){return '<option'+(u===v?' selected':'')+'>'+esc(u)+'</option>'}).join('')+'<option value="__nueva">+ Nueva ubicación…</option>';
+  $('#f-ubic-nueva').hidden=true;$('#f-ubic-nueva').value=''}
+$('#f-ubic').addEventListener('change',function(){var n=this.value==='__nueva';$('#f-ubic-nueva').hidden=!n;if(n)$('#f-ubic-nueva').focus()});
 function abrirForm(id){
   var it=id?inv.find(function(i){return i.id===id}):null;actual=id;
   $('#f-titulo').textContent=it?'Editar insumo':'Nuevo insumo';
@@ -1016,7 +1026,7 @@ function abrirForm(id){
   $('#f-cantidad').value=d.cantidadComprada||'';$('#f-cantidad-nota').hidden=true;
   if(it)sugerirCantidad(it);
   $('#f-stock').value=it?fmtN(it.stock)+' '+uni(it):'';
-  $('#f-minimo').value=d.minimo||'';$('#f-venc').value=venc(d);$('#f-dias').value=d.diasCriticos||'';
+  $('#f-minimo').value=d.minimo||'';$('#f-venc').value=venc(d);$('#f-dias').value=d.diasCriticos||'';pintarUbic(d.ubicacion||'');
   pintarDinamicos(sel.value,d);$('#f-sds').checked=necesitaSDS(d);previewCosto();ver('form');$('#f-nombre').focus();
 }
 function sugerirCantidad(it){
@@ -1045,11 +1055,16 @@ $('#form-insumo').addEventListener('submit',function(e){
   if(!nombre){err.textContent='Escribe el nombre del insumo.';err.hidden=false;$('#f-nombre').focus();return}
   if(!actual&&!(cant>0)){err.textContent='Escribe la cantidad comprada. Será el stock inicial.';err.hidden=false;$('#f-cantidad').focus();return}
   var p={categoria:c,nombre:nombre,lote:$('#f-lote').value.trim()||'S/L',proveedor:$('#f-proveedor').value.trim(),tipoDocumento:$('#f-tipodoc').value,documentoCompra:$('#f-ndoc').value.trim(),notaCompra:$('#f-notacompra').value.trim(),fechaIngreso:$('#f-fecha').value,unidadMedida:$('#f-unidad').value,cantidadComprada:cant,precioTotal:num($('#f-precio').value),minimo:num($('#f-minimo').value),fechaVencimiento:$('#f-venc').value,diasCriticos:num($('#f-dias').value)};
+  var ubNueva=false,ub=$('#f-ubic').value;
+  if(ub==='__nueva'){ub=$('#f-ubic-nueva').value.trim().replace(/\s+/g,' ');if(!ub){err.textContent='Escribe el nombre de la nueva ubicación.';err.hidden=false;$('#f-ubic-nueva').focus();return}
+    var ya=ubicaciones().find(function(u){return u.toLowerCase()===ub.toLowerCase()});if(ya)ub=ya;else ubNueva=true}
+  p.ubicacion=ub;
   if(c==='laboratorio')p.fechaExpiracion=p.fechaVencimiento;
   p.requiereSDS=$('#f-sds').checked;
   (CATS[c]?CATS[c].f:[]).forEach(function(f){var el=$('#fd-'+f[0]);if(el)p[f[0]]=el.value.trim()});
   p.costoUnitario=costoUnit(p);
   $('#f-guardar').disabled=true;
+  if(ubNueva)api.agregarUbicacion(ub).catch(function(){});
   var prom;
   if(actual){prom=api.actualizar(actual,p).then(function(){return rellenarVacios(actual,p.costoUnitario,uni(p))})}
   else{
@@ -1643,7 +1658,7 @@ function hacerRespaldo(extra,soloJson){
     var ms=rs[0],f=hoy();
     descargar('chuyma-respaldo-'+f+'.json',JSON.stringify(Object.assign({exportado:new Date().toISOString(),version:APP_VERSION,inventario:inv,consumos:ms,batches:batches,tarifasAntiguas:tarifasViejas,cava:cavaLotes,salidasCava:rs[1]},extra||{}),null,2),'application/json');
     if(soloJson)return;
-    setTimeout(function(){descargar('chuyma-inventario-'+f+'.csv',csv(inv.map(function(i){return Object.assign({},i,{documentos:docs(i).map(function(d){return d.tipo+': '+d.url}).join(' | ')})}),['codigoUnico','categoria','nombre','lote','stock','unidadMedida','minimo','cantidadComprada','precioTotal','tipoDocumento','documentoCompra','proveedor','fechaIngreso','fechaVencimiento','diasCriticos','documentos']),'text/csv')},500);
+    setTimeout(function(){descargar('chuyma-inventario-'+f+'.csv',csv(inv.map(function(i){return Object.assign({},i,{documentos:docs(i).map(function(d){return d.tipo+': '+d.url}).join(' | ')})}),['codigoUnico','categoria','nombre','lote','ubicacion','stock','unidadMedida','minimo','cantidadComprada','precioTotal','tipoDocumento','documentoCompra','proveedor','fechaIngreso','fechaVencimiento','diasCriticos','documentos']),'text/csv')},500);
     setTimeout(function(){descargar('chuyma-consumos-'+f+'.csv',csv(ms,['fechaConsumo','tipo','nombreInsumo','loteInsumo','codigoUnicoInsumo','cantidadUsada','delta','unidadMedida','loteBrewfather','nota','costoUnitario','costoTotal']),'text/csv')},1000);
   });
 }
